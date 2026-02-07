@@ -1,0 +1,30 @@
+package br.com.comuminha.dto;
+
+import br.com.comuminha.domain.enums.AdStatus;
+import br.com.comuminha.domain.enums.AdType;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class AdResponse {
+
+    private Long id;
+    private String title;
+    private String description;
+    private AdType type;
+    private BigDecimal price;
+    private AdStatus status;
+    private Long userId;
+    private String userName;
+    private String userWhatsapp;
+    private Long communityId;
+    private Instant createdAt;
+}
