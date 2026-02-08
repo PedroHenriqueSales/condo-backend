@@ -1,4 +1,4 @@
--- ComuMinha - Schema inicial
+-- Aquidolado - Schema inicial
 -- Tabelas em snake_case
 
 CREATE TABLE users (

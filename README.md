@@ -1,4 +1,4 @@
-# ComuMinha API
+# Aquidolado API
 
 API REST para anúncios entre moradores de condomínio. MVP minimalista focado em simplicidade e confiança.
 
@@ -31,7 +31,7 @@ API REST para anúncios entre moradores de condomínio. MVP minimalista focado e
    ```bash
    export DB_HOST=localhost
    export DB_PORT=5432
-   export DB_NAME=comuminha
+   export DB_NAME=aquidolado
    export DB_USER=postgres
    export DB_PASSWORD=postgres
    export JWT_SECRET=sua-chave-secreta-minimo-256-bits-para-producao

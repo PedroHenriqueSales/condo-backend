@@ -1,9 +1,9 @@
 spring:
   application:
-    name: comuminha-api
+    name: aquidolado-api
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:comuminha}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:aquidolado}
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:postgres}
     hikari:
@@ -28,6 +28,11 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 20MB
+
 server:
   port: ${PORT:8080}
 
@@ -42,8 +47,15 @@ management:
 
 # JWT
 jwt:
-  secret: ${JWT_SECRET:comuminha-secret-key-change-in-production-min-256-bits}
+  secret: ${JWT_SECRET:aquidolado-secret-key-change-in-production-min-256-bits}
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+
+# Storage (imagens de anúncios)
+app:
+  storage:
+    local:
+      path: uploads
+      url-prefix: /uploads
 
 # Swagger/OpenAPI
 springdoc:

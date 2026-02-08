@@ -1,15 +1,15 @@
-# Documentação Técnica — Backend ComuMinha
+# Documentação Técnica — Backend Aquidolado
 
 ## 1. Visão geral
 
-O backend do ComuMinha é uma API REST em **Spring Boot 3.2** com **Java 21**, responsável por autenticação, gestão de condomínios e anúncios. Utiliza JWT stateless, JPA/Hibernate com PostgreSQL e Flyway para migrations.
+O backend do Aquidolado é uma API REST em **Spring Boot 3.2** com **Java 21**, responsável por autenticação, gestão de condomínios e anúncios. Utiliza JWT stateless, JPA/Hibernate com PostgreSQL e Flyway para migrations.
 
 ## 2. Arquitetura
 
 ### 2.1 Estrutura de pacotes
 
 ```
-br.com.comuminha
+br.com.aquidolado
 ├── config/          # Configurações (OpenAPI, Swagger, DevDataSeeder)
 ├── controller/      # REST controllers
 ├── domain/
@@ -107,6 +107,7 @@ Todos os demais endpoints exigem token JWT válido.
 | POST | `/api/communities/join` | Entrar por accessCode |
 | GET | `/api/communities` | Listar meus condomínios |
 | GET | `/api/communities/{id}` | Detalhes do condomínio |
+| DELETE | `/api/communities/{id}/leave` | Sair do condomínio |
 
 ### 5.3 Anúncios
 

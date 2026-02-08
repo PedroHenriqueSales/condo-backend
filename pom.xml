@@ -11,10 +11,10 @@
         <relativePath/>
     </parent>
 
-    <groupId>br.com.comuminha</groupId>
-    <artifactId>comuminha-api</artifactId>
+    <groupId>br.com.aquidolado</groupId>
+    <artifactId>aquidolado-api</artifactId>
     <version>0.1.0-SNAPSHOT</version>
-    <name>ComuMinha API</name>
+    <name>Aquidolado API</name>
     <description>API para anúncios entre moradores de condomínio</description>
 
     <properties>
