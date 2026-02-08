@@ -4,19 +4,20 @@ API REST para anúncios entre moradores de condomínio. MVP minimalista focado e
 
 ## Stack
 
-- Java 17+
-- Spring Boot 3.x
-- Spring Security (JWT)
-- PostgreSQL
-- Flyway
+- Java 21
+- Spring Boot 3.2.x
+- Spring Security (JWT stateless)
+- Spring Data JPA / Hibernate
+- PostgreSQL 16
+- Flyway (migrations)
 - Maven
-- Swagger/OpenAPI (SpringDoc)
+- SpringDoc OpenAPI (Swagger UI)
 
 ## Pré-requisitos
 
-- Java 17+
+- Java 21+
 - Maven 3.8+
-- PostgreSQL 14+
+- PostgreSQL 14+ (ou Docker)
 
 ## Rodando localmente
 
@@ -84,6 +85,10 @@ Para testar endpoints protegidos no Swagger:
 
 ### Métricas
 - `POST /api/events` - Registrar evento genérico
+
+## Documentação técnica
+
+Consulte `docs/DOCUMENTACAO_TECNICA.md` para detalhamento de arquitetura, entidades, segurança e API.
 
 ## Deploy no Railway
 
