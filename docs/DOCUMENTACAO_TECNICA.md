@@ -187,3 +187,32 @@ Resposta: `Page<T>` com `content`, `totalElements`, `totalPages`, `number`, etc.
 - **Swagger UI:** `/swagger-ui.html`
 - **OpenAPI JSON:** `/v3/api-docs`
 - Permite testar endpoints protegidos com token via botão "Authorize".
+
+## 10. Deploy (homologação)
+
+O backend usa **Render** (free tier) com custo zero. O banco PostgreSQL é provisionado no mesmo serviço.
+
+**Dockerfile:**
+
+- Multi-stage: build com `eclipse-temurin:21-jdk-alpine` e Maven; runtime com `eclipse-temurin:21-jre-alpine`
+- Cria diretório `uploads` (ephemeral no Render)
+- `EXPOSE 8080`, `ENTRYPOINT ["java", "-jar", "app.jar"]`
+
+**Variáveis de ambiente (Render):**
+
+- `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` — do PostgreSQL Render
+- `JWT_SECRET` — mínimo 32 caracteres
+- `CORS_ALLOWED_ORIGINS` — URL do frontend (ex.: `https://aquidolado-xxxx.vercel.app`)
+- `SPRING_PROFILES_ACTIVE=prod`
+- `PORT` — definido automaticamente pelo Render
+
+**Arquivos de exemplo:**
+
+- `env.render.example` — documenta as variáveis para homologação
+- `env.railway.example` — similar, para Railway (opcional)
+
+**Limitações do free tier:**
+
+- Spin-down após 15 min de inatividade; cold start ~1 min
+- PostgreSQL expira em 30 dias
+- Filesystem ephemeral: imagens em `uploads/` são perdidas em redeploy
