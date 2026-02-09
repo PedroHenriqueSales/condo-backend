@@ -22,6 +22,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -72,17 +73,14 @@ public class SecurityConfig {
                     .toList();
             
             // Usa patterns para suportar wildcards (ex: URLs do Vercel)
-            // Converte URLs do Vercel para padrão automaticamente
-            List<String> patterns = origins.stream()
-                    .map(origin -> {
-                        // Se for URL do Vercel, converte para padrão
-                        if (origin.contains(".vercel.app")) {
-                            return "https://*.vercel.app";
-                        }
-                        return origin;
-                    })
-                    .distinct()
-                    .toList();
+            // Adiciona padrão do Vercel automaticamente se detectar URL do Vercel
+            List<String> patterns = new ArrayList<>(origins);
+            
+            // Se houver alguma URL do Vercel, adiciona o padrão wildcard
+            boolean hasVercelUrl = origins.stream().anyMatch(origin -> origin.contains(".vercel.app"));
+            if (hasVercelUrl && !patterns.contains("https://*.vercel.app")) {
+                patterns.add("https://*.vercel.app");
+            }
             
             cfg.setAllowedOriginPatterns(patterns);
         } else {
@@ -103,7 +101,7 @@ public class SecurityConfig {
                 ));
             } else {
                 // Sem origins configuradas → não libera cross-origin por padrão
-                cfg.setAllowedOrigins(List.of());
+                cfg.setAllowedOriginPatterns(List.of());
             }
         }
 
