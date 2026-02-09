@@ -70,7 +70,21 @@ public class SecurityConfig {
                     .map(String::trim)
                     .filter(s -> !s.isEmpty())
                     .toList();
-            cfg.setAllowedOrigins(origins);
+            
+            // Usa patterns para suportar wildcards (ex: URLs do Vercel)
+            // Converte URLs do Vercel para padrão automaticamente
+            List<String> patterns = origins.stream()
+                    .map(origin -> {
+                        // Se for URL do Vercel, converte para padrão
+                        if (origin.contains(".vercel.app")) {
+                            return "https://*.vercel.app";
+                        }
+                        return origin;
+                    })
+                    .distinct()
+                    .toList();
+            
+            cfg.setAllowedOriginPatterns(patterns);
         } else {
             // Dev: libera o Vite dev server e dispositivos na rede local (ex.: iPhone)
             if (Arrays.asList(environment.getActiveProfiles()).contains("dev")) {
