@@ -216,3 +216,74 @@ O backend usa **Render** (free tier) com custo zero. O banco PostgreSQL é provi
 - Spin-down após 15 min de inatividade; cold start ~1 min
 - PostgreSQL expira em 30 dias
 - Filesystem ephemeral: imagens em `uploads/` são perdidas em redeploy
+
+## 11. Armazenamento de Imagens (Storage)
+
+### 11.1 Implementações Disponíveis
+
+O sistema suporta duas implementações de armazenamento via interface `StorageService`:
+
+| Implementação | Profile/Config | Uso |
+|---------------|----------------|-----|
+| `LocalStorageService` | `app.storage.type=local` (padrão) | Desenvolvimento local |
+| `CloudinaryStorageService` | `app.storage.type=cloudinary` + `@Profile("prod")` | Produção/homologação |
+
+### 11.2 LocalStorageService (Desenvolvimento)
+
+- Salva arquivos no filesystem local (`uploads/`)
+- Servido via Spring MVC em `/uploads/**`
+- Configuração em `app.storage.local.path` e `app.storage.local.url-prefix`
+- **Limitação:** Não funciona em produção no Render (filesystem ephemeral)
+
+### 11.3 CloudinaryStorageService (Produção)
+
+**Configuração:**
+
+1. Criar conta no [Cloudinary](https://cloudinary.com) (free tier disponível)
+2. Obter credenciais do Dashboard:
+   - `cloud_name`
+   - `api_key`
+   - `api_secret`
+3. Configurar variáveis de ambiente no Render:
+   ```
+   CLOUDINARY_CLOUD_NAME=seu-cloud-name
+   CLOUDINARY_API_KEY=sua-api-key
+   CLOUDINARY_API_SECRET=sua-api-secret
+   ```
+4. Definir `app.storage.type=cloudinary` em `application-prod.yml`
+
+**Características:**
+
+- Upload direto para Cloudinary via SDK Java
+- URLs públicas retornadas (ex.: `https://res.cloudinary.com/...`)
+- Validações: máximo 5MB, tipos JPEG/PNG/WebP
+- Estrutura de pastas: `{folder}/{prefix}/{uuid}` (ex.: `aquidolado/ads/123/uuid.jpg`)
+- Delete individual e por prefixo suportados
+
+**Limites do Free Tier:**
+
+- 25 créditos mensais (suficiente para testes)
+- Para produção, considerar planos pagos (Plus: $89-99/mês, Advanced: $224-249/mês)
+- Créditos cobrem: storage, bandwidth, transformações, CDN
+
+**Estrutura no Cloudinary:**
+
+```
+aquidolado/
+  └── ads/
+      └── {adId}/
+          └── {uuid}.jpg
+```
+
+### 11.4 Seleção Automática
+
+A seleção entre implementações é feita automaticamente via anotações Spring:
+
+- `@ConditionalOnProperty`: `LocalStorageService` só ativa quando `app.storage.type=local` (padrão)
+- `@Profile("prod")`: `CloudinaryStorageService` só ativa quando profile `prod` está ativo E `app.storage.type=cloudinary`
+
+Isso garante que apenas uma implementação esteja ativa por vez, evitando conflitos.
+
+### 11.5 WebMvcConfig
+
+O `WebMvcConfig` registra o handler `/uploads/**` apenas quando `app.storage.type=local`, evitando conflitos em produção com Cloudinary.
