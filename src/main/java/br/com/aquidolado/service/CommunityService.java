@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -74,8 +75,9 @@ public class CommunityService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public CommunityResponse getById(Long communityId, Long userId) {
-        Community community = communityRepository.findById(communityId)
+        Community community = communityRepository.findByIdWithCreatedByAndMembers(communityId)
                 .orElseThrow(() -> new IllegalArgumentException("Condomínio não encontrado"));
 
         if (!userRepository.existsById(userId)) {
@@ -85,7 +87,7 @@ public class CommunityService {
             throw new IllegalArgumentException("Você não tem acesso a este condomínio");
         }
 
-        return toResponse(community);
+        return toResponseWithDetails(community);
     }
 
     @Transactional
@@ -119,6 +121,22 @@ public class CommunityService {
                 .accessCode(c.getAccessCode())
                 .createdAt(c.getCreatedAt())
                 .createdById(c.getCreatedBy().getId())
+                .build();
+    }
+
+    private CommunityResponse toResponseWithDetails(Community c) {
+        List<String> memberNames = c.getMembers().stream()
+                .map(User::getName)
+                .sorted(Comparator.naturalOrder())
+                .collect(Collectors.toList());
+        return CommunityResponse.builder()
+                .id(c.getId())
+                .name(c.getName())
+                .accessCode(c.getAccessCode())
+                .createdAt(c.getCreatedAt())
+                .createdById(c.getCreatedBy().getId())
+                .createdByName(c.getCreatedBy().getName())
+                .memberNames(memberNames)
                 .build();
     }
 }

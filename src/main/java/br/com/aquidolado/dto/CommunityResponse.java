@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.List;
 
 @Data
 @Builder
@@ -18,4 +19,8 @@ public class CommunityResponse {
     private String accessCode;
     private Instant createdAt;
     private Long createdById;
+    /** Preenchido apenas no detalhe (GET /communities/{id}) */
+    private String createdByName;
+    /** Preenchido apenas no detalhe (GET /communities/{id}), nomes ordenados */
+    private List<String> memberNames;
 }
