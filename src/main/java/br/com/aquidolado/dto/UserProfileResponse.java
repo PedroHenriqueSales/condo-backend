@@ -15,4 +15,5 @@ public class UserProfileResponse {
     private String email;
     private String name;
     private String whatsapp;
+    private String address;
 }

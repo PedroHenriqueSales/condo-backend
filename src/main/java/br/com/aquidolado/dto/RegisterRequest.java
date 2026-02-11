@@ -20,7 +20,10 @@ public class RegisterRequest {
     @Size(min = 6, max = 100)
     private String password;
 
+    @NotBlank(message = "Telefone/WhatsApp é obrigatório")
+    @Size(max = 50)
     private String whatsapp;
 
+    @Size(max = 500)
     private String address;
 }

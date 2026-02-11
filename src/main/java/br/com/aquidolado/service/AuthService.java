@@ -1,15 +1,16 @@
-package br.com.aquidolado.service;
+﻿package br.com.aquidolado.service;
 
 import br.com.aquidolado.domain.entity.User;
 import br.com.aquidolado.domain.enums.EventType;
-import br.com.aquidolado.dto.*;
+import br.com.aquidolado.dto.AuthResponse;
+import br.com.aquidolado.dto.LoginRequest;
+import br.com.aquidolado.dto.RegisterRequest;
 import br.com.aquidolado.repository.UserRepository;
 import br.com.aquidolado.security.JwtService;
+import br.com.aquidolado.util.PhoneUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +25,6 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
-    private final AuthenticationManager authenticationManager;
     private final EventLogService eventLogService;
     private final Environment environment;
 
@@ -41,12 +41,13 @@ public class AuthService {
             throw new IllegalArgumentException("Email já cadastrado");
         }
 
+        String whatsapp = PhoneUtil.normalize(request.getWhatsapp());
         User user = User.builder()
                 .name(request.getName())
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .whatsapp(request.getWhatsapp())
-                .address(request.getAddress())
+                .whatsapp(whatsapp)
+                .address(request.getAddress() != null && !request.getAddress().isBlank() ? request.getAddress().trim() : null)
                 .invitesRemaining(5)
                 .active(true)
                 .build();
@@ -76,8 +77,6 @@ public class AuthService {
         }
 
         try {
-            var auth = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
 
             User user = userRepository.findByEmail(request.getEmail())
                     .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));

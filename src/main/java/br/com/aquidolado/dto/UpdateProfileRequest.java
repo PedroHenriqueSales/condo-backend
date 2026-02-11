@@ -11,5 +11,10 @@ public class UpdateProfileRequest {
     @Size(max = 255)
     private String name;
 
+    @NotBlank(message = "Telefone/WhatsApp é obrigatório")
+    @Size(max = 50)
     private String whatsapp;
+
+    @Size(max = 500)
+    private String address;
 }

@@ -28,8 +28,10 @@ public class User {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
+    @Column(length = 50)
     private String whatsapp;
 
+    @Column(length = 500)
     private String address;
 
     @Column(name = "invites_remaining", nullable = false)

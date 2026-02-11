@@ -4,6 +4,7 @@ import br.com.aquidolado.domain.entity.User;
 import br.com.aquidolado.dto.UpdateProfileRequest;
 import br.com.aquidolado.dto.UserProfileResponse;
 import br.com.aquidolado.repository.UserRepository;
+import br.com.aquidolado.util.PhoneUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,7 @@ public class UserService {
                 .email(user.getEmail())
                 .name(user.getName())
                 .whatsapp(user.getWhatsapp())
+                .address(user.getAddress())
                 .build();
     }
 
@@ -33,8 +35,9 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
 
         user.setName(request.getName().trim());
-        user.setWhatsapp(request.getWhatsapp() != null && !request.getWhatsapp().isBlank()
-                ? request.getWhatsapp().trim()
+        user.setWhatsapp(PhoneUtil.normalize(request.getWhatsapp()));
+        user.setAddress(request.getAddress() != null && !request.getAddress().isBlank()
+                ? request.getAddress().trim()
                 : null);
 
         user = userRepository.save(user);
@@ -44,6 +47,7 @@ public class UserService {
                 .email(user.getEmail())
                 .name(user.getName())
                 .whatsapp(user.getWhatsapp())
+                .address(user.getAddress())
                 .build();
     }
 }
