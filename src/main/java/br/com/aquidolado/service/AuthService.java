@@ -1,4 +1,4 @@
-﻿package br.com.aquidolado.service;
+package br.com.aquidolado.service;
 
 import br.com.aquidolado.domain.entity.User;
 import br.com.aquidolado.domain.enums.EventType;
@@ -57,9 +57,9 @@ public class AuthService {
         eventLogService.log(EventType.REGISTER, user.getId(), null);
 
         String token = jwtService.generateToken(user.getEmail(), user.getId());
-        
+
         if (isDevProfile()) {
-            log.info("🔐 [AUTH] Registro bem-sucedido - UserId: {}, Email: {}, Nome: {}", 
+            log.info("🔐 [AUTH] Registro bem-sucedido - UserId: {}, Email: {}, Nome: {}",
                     user.getId(), user.getEmail(), user.getName());
         }
 
@@ -84,9 +84,9 @@ public class AuthService {
             eventLogService.log(EventType.LOGIN, user.getId(), null);
 
             String token = jwtService.generateToken(user.getEmail(), user.getId());
-            
+
             if (isDevProfile()) {
-                log.info("🔐 [AUTH] Login bem-sucedido - UserId: {}, Email: {}, Nome: {}", 
+                log.info("🔐 [AUTH] Login bem-sucedido - UserId: {}, Email: {}, Nome: {}",
                         user.getId(), user.getEmail(), user.getName());
             }
 
@@ -98,7 +98,7 @@ public class AuthService {
                     .build();
         } catch (org.springframework.security.core.AuthenticationException e) {
             if (isDevProfile()) {
-                log.warn("🔐 [AUTH] Login falhou - Email: {}, Motivo: {}", 
+                log.warn("🔐 [AUTH] Login falhou - Email: {}, Motivo: {}",
                         request.getEmail(), e.getMessage());
             }
             throw e;
