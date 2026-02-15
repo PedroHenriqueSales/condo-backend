@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
@@ -50,11 +51,12 @@ public class AdService {
             throw new IllegalArgumentException("Você não pertence a esta comunidade");
         }
 
+        BigDecimal priceToSave = request.getType() == AdType.DONATION ? null : request.getPrice();
         Ad ad = Ad.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .type(request.getType())
-                .price(request.getPrice())
+                .price(priceToSave)
                 .status(AdStatus.ACTIVE)
                 .user(user)
                 .community(community)
@@ -106,7 +108,7 @@ public class AdService {
         ad.setTitle(request.getTitle());
         ad.setDescription(request.getDescription());
         ad.setType(request.getType());
-        ad.setPrice(request.getPrice());
+        ad.setPrice(request.getType() == AdType.DONATION ? null : request.getPrice());
         ad = adRepository.save(ad);
 
         if (newImages != null && !newImages.isEmpty()) {

@@ -20,7 +20,6 @@ import java.time.Instant;
 /**
  * Seeder de dados APENAS para desenvolvimento local.
  * Cria um usuário, uma comunidade e alguns anúncios para facilitar o teste do frontend.
- *
  * Profile: dev
  */
 @Profile("dev")
@@ -112,6 +111,16 @@ public class DevDataSeeder implements CommandLineRunner {
                 .user(user)
                 .community(community)
                 .createdAt(now.minusSeconds(900))
+                .build());
+
+        adRepository.save(Ad.builder()
+                .title("Livros infantis (doação)")
+                .description("Vários livros em bom estado. Quem quiser pode buscar.")
+                .type(AdType.DONATION)
+                .price(null)
+                .user(user)
+                .community(community)
+                .createdAt(now.minusSeconds(600))
                 .build());
     }
 }
