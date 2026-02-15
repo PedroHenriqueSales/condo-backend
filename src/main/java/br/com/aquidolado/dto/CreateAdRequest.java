@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 public class CreateAdRequest {
 
     @NotBlank(message = "Título é obrigatório")
-    @Size(max = 255)
+    @Size(max = 60, message = "Título deve ter no máximo 60 caracteres")
     private String title;
 
     private String description;

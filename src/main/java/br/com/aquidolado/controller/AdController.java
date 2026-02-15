@@ -30,7 +30,7 @@ public class AdController {
     private final AdService adService;
 
     @PostMapping(consumes = "multipart/form-data")
-    @Operation(summary = "Criar anúncio", description = "Cria um novo anúncio na comunidade (até 3 imagens)")
+    @Operation(summary = "Criar anúncio", description = "Cria um novo anúncio na comunidade (até 5 imagens)")
     public ResponseEntity<AdResponse> create(
             @Valid @RequestPart("ad") CreateAdRequest request,
             @RequestPart(value = "images", required = false) List<MultipartFile> images) {
