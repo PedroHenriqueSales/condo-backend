@@ -4,5 +4,6 @@ public enum AdType {
     SALE_TRADE,
     RENT,
     SERVICE,
-    DONATION
+    DONATION,
+    RECOMMENDATION
 }

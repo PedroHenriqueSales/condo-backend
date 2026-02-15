@@ -48,4 +48,12 @@ public class Ad {
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
+
+    /** Contato do indicado (apenas quando type == RECOMMENDATION). */
+    @Column(name = "recommended_contact", columnDefinition = "TEXT")
+    private String recommendedContact;
+
+    /** Tipo de serviço (apenas quando type == RECOMMENDATION). */
+    @Column(name = "service_type", length = 100)
+    private String serviceType;
 }

@@ -2,9 +2,14 @@ package br.com.aquidolado.controller;
 
 import br.com.aquidolado.domain.enums.AdType;
 import br.com.aquidolado.dto.AdResponse;
+import br.com.aquidolado.dto.CommentResponse;
 import br.com.aquidolado.dto.CreateAdRequest;
+import br.com.aquidolado.dto.CreateCommentRequest;
+import br.com.aquidolado.dto.ReactionRequest;
 import br.com.aquidolado.dto.UpdateAdRequest;
 import br.com.aquidolado.service.AdService;
+import br.com.aquidolado.service.RecommendationCommentService;
+import br.com.aquidolado.service.RecommendationReactionService;
 import br.com.aquidolado.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -28,6 +33,8 @@ import java.util.List;
 public class AdController {
 
     private final AdService adService;
+    private final RecommendationReactionService recommendationReactionService;
+    private final RecommendationCommentService recommendationCommentService;
 
     @PostMapping(consumes = "multipart/form-data")
     @Operation(summary = "Criar anúncio", description = "Cria um novo anúncio na comunidade (até 5 imagens)")
@@ -99,6 +106,60 @@ public class AdController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         Long userId = SecurityUtil.getCurrentUserId();
         adService.deleteAd(id, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/reaction")
+    @Operation(summary = "Definir reação (indicação)", description = "Curtir ou descurtir uma indicação (apenas tipo RECOMMENDATION)")
+    public ResponseEntity<Void> setReaction(@PathVariable Long id, @Valid @RequestBody ReactionRequest request) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        recommendationReactionService.setReaction(id, userId, request.getKind());
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/reaction")
+    @Operation(summary = "Remover reação (indicação)", description = "Remove sua reação da indicação")
+    public ResponseEntity<Void> removeReaction(@PathVariable Long id) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        recommendationReactionService.removeReaction(id, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/comments")
+    @Operation(summary = "Listar comentários (indicação)", description = "Lista comentários da indicação (apenas tipo RECOMMENDATION)")
+    public ResponseEntity<Page<CommentResponse>> getComments(
+            @PathVariable Long id,
+            @PageableDefault(size = 50) Pageable pageable) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        return ResponseEntity.ok(recommendationCommentService.getComments(id, userId, pageable));
+    }
+
+    @PostMapping("/{id}/comments")
+    @Operation(summary = "Criar comentário (indicação)", description = "Adiciona um comentário à indicação")
+    public ResponseEntity<CommentResponse> createComment(
+            @PathVariable Long id,
+            @Valid @RequestBody CreateCommentRequest request) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        return ResponseEntity.ok(recommendationCommentService.createComment(id, userId, request));
+    }
+
+    @PostMapping("/{id}/comments/{commentId}/like")
+    @Operation(summary = "Curtir comentário (toggle)", description = "Curtir ou descurtir um comentário da indicação")
+    public ResponseEntity<Void> toggleCommentLike(
+            @PathVariable Long id,
+            @PathVariable Long commentId) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        recommendationCommentService.toggleCommentLike(id, commentId, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/comments/{commentId}")
+    @Operation(summary = "Excluir comentário", description = "Exclui um comentário da indicação (somente o autor)")
+    public ResponseEntity<Void> deleteComment(
+            @PathVariable Long id,
+            @PathVariable Long commentId) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        recommendationCommentService.deleteComment(id, commentId, userId);
         return ResponseEntity.noContent().build();
     }
 }

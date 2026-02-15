@@ -3,16 +3,19 @@ package br.com.aquidolado.service;
 import br.com.aquidolado.domain.entity.Ad;
 import br.com.aquidolado.domain.entity.AdImage;
 import br.com.aquidolado.domain.entity.Community;
+import br.com.aquidolado.domain.entity.RecommendationReaction;
 import br.com.aquidolado.domain.entity.User;
 import br.com.aquidolado.domain.enums.AdStatus;
 import br.com.aquidolado.domain.enums.AdType;
 import br.com.aquidolado.domain.enums.EventType;
+import br.com.aquidolado.domain.enums.ReactionKind;
 import br.com.aquidolado.dto.AdResponse;
 import br.com.aquidolado.dto.CreateAdRequest;
 import br.com.aquidolado.dto.UpdateAdRequest;
 import br.com.aquidolado.repository.AdImageRepository;
 import br.com.aquidolado.repository.AdRepository;
 import br.com.aquidolado.repository.CommunityRepository;
+import br.com.aquidolado.repository.RecommendationReactionRepository;
 import br.com.aquidolado.repository.UserRepository;
 import br.com.aquidolado.storage.StorageService;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +39,7 @@ public class AdService {
     private final AdImageRepository adImageRepository;
     private final UserRepository userRepository;
     private final CommunityRepository communityRepository;
+    private final RecommendationReactionRepository recommendationReactionRepository;
     private final EventLogService eventLogService;
     private final StorageService storageService;
 
@@ -51,7 +55,20 @@ public class AdService {
             throw new IllegalArgumentException("Você não pertence a esta comunidade");
         }
 
-        BigDecimal priceToSave = request.getType() == AdType.DONATION ? null : request.getPrice();
+        if (request.getType() == AdType.RECOMMENDATION) {
+            if (images != null && !images.stream().allMatch(f -> f == null || f.isEmpty())) {
+                throw new IllegalArgumentException("Indicações não podem ter fotos");
+            }
+            if (request.getRecommendedContact() == null || request.getRecommendedContact().isBlank()) {
+                throw new IllegalArgumentException("Contato do indicado é obrigatório para indicações");
+            }
+            if (request.getServiceType() == null || request.getServiceType().isBlank()) {
+                throw new IllegalArgumentException("Tipo de serviço é obrigatório para indicações");
+            }
+        }
+
+        BigDecimal priceToSave = (request.getType() == AdType.DONATION || request.getType() == AdType.RECOMMENDATION)
+                ? null : request.getPrice();
         Ad ad = Ad.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
@@ -61,15 +78,19 @@ public class AdService {
                 .user(user)
                 .community(community)
                 .createdAt(Instant.now())
+                .recommendedContact(request.getType() == AdType.RECOMMENDATION ? request.getRecommendedContact().trim() : null)
+                .serviceType(request.getType() == AdType.RECOMMENDATION ? request.getServiceType().trim() : null)
                 .build();
 
         ad = adRepository.save(ad);
 
-        saveImages(ad, images);
+        if (request.getType() != AdType.RECOMMENDATION) {
+            saveImages(ad, images);
+        }
 
         eventLogService.log(EventType.CREATE_AD, userId, community.getId());
 
-        return toResponse(ad);
+        return toResponse(ad, userId);
     }
 
     @Transactional(readOnly = true)
@@ -84,12 +105,12 @@ public class AdService {
         Page<Ad> ads = adRepository.findByCommunityWithFilters(
                 communityId, AdStatus.ACTIVE, type, searchPattern, pageable);
 
-        return ads.map(this::toResponse);
+        return ads.map(ad -> toResponse(ad, userId));
     }
 
     @Transactional(readOnly = true)
     public Page<AdResponse> listMyAds(Long userId, Pageable pageable) {
-        return adRepository.findByUserIdWithUser(userId, pageable).map(this::toResponse);
+        return adRepository.findByUserIdWithUser(userId, pageable).map(ad -> toResponse(ad, userId));
     }
 
     @Transactional
@@ -105,13 +126,27 @@ public class AdService {
             throw new IllegalArgumentException("Não é possível editar anúncios encerrados");
         }
 
+        if (request.getType() == AdType.RECOMMENDATION) {
+            if (newImages != null && !newImages.stream().allMatch(f -> f == null || f.isEmpty())) {
+                throw new IllegalArgumentException("Indicações não podem ter fotos");
+            }
+            if (request.getRecommendedContact() == null || request.getRecommendedContact().isBlank()) {
+                throw new IllegalArgumentException("Contato do indicado é obrigatório para indicações");
+            }
+            if (request.getServiceType() == null || request.getServiceType().isBlank()) {
+                throw new IllegalArgumentException("Tipo de serviço é obrigatório para indicações");
+            }
+        }
+
         ad.setTitle(request.getTitle());
         ad.setDescription(request.getDescription());
         ad.setType(request.getType());
-        ad.setPrice(request.getType() == AdType.DONATION ? null : request.getPrice());
+        ad.setPrice((request.getType() == AdType.DONATION || request.getType() == AdType.RECOMMENDATION) ? null : request.getPrice());
+        ad.setRecommendedContact(request.getType() == AdType.RECOMMENDATION ? request.getRecommendedContact().trim() : null);
+        ad.setServiceType(request.getType() == AdType.RECOMMENDATION ? request.getServiceType().trim() : null);
         ad = adRepository.save(ad);
 
-        if (newImages != null && !newImages.isEmpty()) {
+        if (ad.getType() != AdType.RECOMMENDATION && newImages != null && !newImages.isEmpty()) {
             List<AdImage> existing = adImageRepository.findByAdIdOrderBySortOrder(adId);
             for (AdImage img : existing) {
                 storageService.delete(img.getUrl());
@@ -120,7 +155,7 @@ public class AdService {
             saveImages(ad, newImages);
         }
 
-        return toResponse(ad);
+        return toResponse(ad, userId);
     }
 
     @Transactional
@@ -139,7 +174,7 @@ public class AdService {
         ad.setStatus(AdStatus.PAUSED);
         ad = adRepository.save(ad);
 
-        return toResponse(ad);
+        return toResponse(ad, userId);
     }
 
     @Transactional
@@ -158,7 +193,7 @@ public class AdService {
         ad.setStatus(AdStatus.ACTIVE);
         ad = adRepository.save(ad);
 
-        return toResponse(ad);
+        return toResponse(ad, userId);
     }
 
     @Transactional
@@ -173,7 +208,7 @@ public class AdService {
         ad.setStatus(AdStatus.CLOSED);
         ad = adRepository.save(ad);
 
-        return toResponse(ad);
+        return toResponse(ad, userId);
     }
 
     @Transactional
@@ -200,7 +235,7 @@ public class AdService {
 
         validateUserInCommunity(userId, ad.getCommunity().getId());
 
-        return toResponse(ad);
+        return toResponse(ad, userId);
     }
 
     private void validateUserInCommunity(Long userId, Long communityId) {
@@ -236,12 +271,14 @@ public class AdService {
         }
     }
 
-    private AdResponse toResponse(Ad ad) {
-        List<String> urls = adImageRepository.findByAdIdOrderBySortOrder(ad.getId())
-                .stream()
-                .map(AdImage::getUrl)
-                .toList();
-        return AdResponse.builder()
+    private AdResponse toResponse(Ad ad, Long currentUserId) {
+        List<String> urls = ad.getType() == AdType.RECOMMENDATION
+                ? List.of()
+                : adImageRepository.findByAdIdOrderBySortOrder(ad.getId())
+                        .stream()
+                        .map(AdImage::getUrl)
+                        .toList();
+        AdResponse.AdResponseBuilder builder = AdResponse.builder()
                 .id(ad.getId())
                 .title(ad.getTitle())
                 .description(ad.getDescription())
@@ -254,6 +291,16 @@ public class AdService {
                 .communityId(ad.getCommunity().getId())
                 .createdAt(ad.getCreatedAt())
                 .imageUrls(urls)
-                .build();
+                .recommendedContact(ad.getRecommendedContact())
+                .serviceType(ad.getServiceType());
+        if (ad.getType() == AdType.RECOMMENDATION && currentUserId != null) {
+            builder.likeCount(recommendationReactionRepository.countByAdIdAndKind(ad.getId(), ReactionKind.LIKE));
+            builder.dislikeCount(recommendationReactionRepository.countByAdIdAndKind(ad.getId(), ReactionKind.DISLIKE));
+            builder.currentUserReaction(
+                    recommendationReactionRepository.findByAdIdAndUserId(ad.getId(), currentUserId)
+                            .map(RecommendationReaction::getKind)
+                            .orElse(null));
+        }
+        return builder.build();
     }
 }

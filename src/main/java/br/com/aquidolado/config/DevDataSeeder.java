@@ -122,6 +122,18 @@ public class DevDataSeeder implements CommandLineRunner {
                 .community(community)
                 .createdAt(now.minusSeconds(600))
                 .build());
+
+        adRepository.save(Ad.builder()
+                .title("Encanador excelente")
+                .description("Recomendo o João para serviços de encanamento. Rápido e honesto.")
+                .type(AdType.RECOMMENDATION)
+                .price(null)
+                .recommendedContact("(11) 99999-1111")
+                .serviceType("Encanador")
+                .user(user)
+                .community(community)
+                .createdAt(now.minusSeconds(300))
+                .build());
     }
 }
 

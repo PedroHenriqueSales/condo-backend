@@ -22,6 +22,12 @@ public class CreateAdRequest {
 
     private BigDecimal price;
 
+    /** Contato do indicado (obrigatório quando type == RECOMMENDATION). */
+    private String recommendedContact;
+
+    /** Tipo de serviço (obrigatório quando type == RECOMMENDATION). */
+    private String serviceType;
+
     @NotNull(message = "ID da comunidade é obrigatório")
     private Long communityId;
 }
