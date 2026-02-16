@@ -1,6 +1,5 @@
 package br.com.aquidolado.domain.entity;
 
-import br.com.aquidolado.domain.enums.ReactionKind;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -29,9 +28,8 @@ public class RecommendationReaction {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private ReactionKind kind;
+    @Column(nullable = false)
+    private Integer rating;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;

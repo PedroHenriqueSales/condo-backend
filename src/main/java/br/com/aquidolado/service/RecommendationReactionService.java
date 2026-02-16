@@ -2,7 +2,6 @@ package br.com.aquidolado.service;
 
 import br.com.aquidolado.domain.entity.Ad;
 import br.com.aquidolado.domain.entity.RecommendationReaction;
-import br.com.aquidolado.domain.enums.ReactionKind;
 import br.com.aquidolado.repository.AdRepository;
 import br.com.aquidolado.repository.RecommendationReactionRepository;
 import br.com.aquidolado.repository.UserRepository;
@@ -21,14 +20,17 @@ public class RecommendationReactionService {
     private final UserRepository userRepository;
 
     @Transactional
-    public void setReaction(Long adId, Long userId, ReactionKind kind) {
+    public void setRating(Long adId, Long userId, int rating) {
+        if (rating < 0 || rating > 5) {
+            throw new IllegalArgumentException("A nota deve ser entre 0 e 5");
+        }
         Ad ad = adRepository.findById(adId)
                 .orElseThrow(() -> new IllegalArgumentException("Anúncio não encontrado"));
         if (ad.getType() != br.com.aquidolado.domain.enums.AdType.RECOMMENDATION) {
-            throw new IllegalArgumentException("Reações só são permitidas em indicações");
+            throw new IllegalArgumentException("Avaliações só são permitidas em indicações");
         }
         if (ad.getUser().getId().equals(userId)) {
-            throw new IllegalArgumentException("Quem criou a indicação não pode reagir");
+            throw new IllegalArgumentException("Quem criou a indicação não pode avaliar");
         }
         if (!userRepository.existsByIdAndCommunitiesId(userId, ad.getCommunity().getId())) {
             throw new IllegalArgumentException("Você não tem acesso a esta comunidade");
@@ -36,13 +38,13 @@ public class RecommendationReactionService {
         recommendationReactionRepository.findByAdIdAndUserId(adId, userId)
                 .ifPresentOrElse(
                         r -> {
-                            r.setKind(kind);
+                            r.setRating(rating);
                             recommendationReactionRepository.save(r);
                         },
                         () -> recommendationReactionRepository.save(RecommendationReaction.builder()
                                 .ad(ad)
                                 .user(userRepository.getReferenceById(userId))
-                                .kind(kind)
+                                .rating(rating)
                                 .createdAt(Instant.now())
                                 .build())
                 );
@@ -53,10 +55,10 @@ public class RecommendationReactionService {
         Ad ad = adRepository.findById(adId)
                 .orElseThrow(() -> new IllegalArgumentException("Anúncio não encontrado"));
         if (ad.getType() != br.com.aquidolado.domain.enums.AdType.RECOMMENDATION) {
-            throw new IllegalArgumentException("Reações só são permitidas em indicações");
+            throw new IllegalArgumentException("Avaliações só são permitidas em indicações");
         }
         if (ad.getUser().getId().equals(userId)) {
-            throw new IllegalArgumentException("Quem criou a indicação não pode reagir");
+            throw new IllegalArgumentException("Quem criou a indicação não pode avaliar");
         }
         recommendationReactionRepository.deleteByAdIdAndUserId(adId, userId);
     }

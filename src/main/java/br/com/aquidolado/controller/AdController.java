@@ -5,7 +5,7 @@ import br.com.aquidolado.dto.AdResponse;
 import br.com.aquidolado.dto.CommentResponse;
 import br.com.aquidolado.dto.CreateAdRequest;
 import br.com.aquidolado.dto.CreateCommentRequest;
-import br.com.aquidolado.dto.ReactionRequest;
+import br.com.aquidolado.dto.RatingRequest;
 import br.com.aquidolado.dto.UpdateAdRequest;
 import br.com.aquidolado.service.AdService;
 import br.com.aquidolado.service.RecommendationCommentService;
@@ -113,16 +113,16 @@ public class AdController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{id}/reaction")
-    @Operation(summary = "Definir reação (indicação)", description = "Curtir ou descurtir uma indicação (apenas tipo RECOMMENDATION)")
-    public ResponseEntity<Void> setReaction(@PathVariable Long id, @Valid @RequestBody ReactionRequest request) {
+    @PutMapping("/{id}/rating")
+    @Operation(summary = "Definir nota (indicação)", description = "Atribui nota de 0 a 5 estrelas à indicação (apenas tipo RECOMMENDATION)")
+    public ResponseEntity<Void> setRating(@PathVariable Long id, @Valid @RequestBody RatingRequest request) {
         Long userId = SecurityUtil.getCurrentUserId();
-        recommendationReactionService.setReaction(id, userId, request.getKind());
+        recommendationReactionService.setRating(id, userId, request.getRating());
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{id}/reaction")
-    @Operation(summary = "Remover reação (indicação)", description = "Remove sua reação da indicação")
+    @Operation(summary = "Remover avaliação (indicação)", description = "Remove sua nota da indicação")
     public ResponseEntity<Void> removeReaction(@PathVariable Long id) {
         Long userId = SecurityUtil.getCurrentUserId();
         recommendationReactionService.removeReaction(id, userId);

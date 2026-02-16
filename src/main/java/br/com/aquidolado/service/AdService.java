@@ -8,7 +8,6 @@ import br.com.aquidolado.domain.entity.User;
 import br.com.aquidolado.domain.enums.AdStatus;
 import br.com.aquidolado.domain.enums.AdType;
 import br.com.aquidolado.domain.enums.EventType;
-import br.com.aquidolado.domain.enums.ReactionKind;
 import br.com.aquidolado.dto.AdResponse;
 import br.com.aquidolado.dto.CreateAdRequest;
 import br.com.aquidolado.dto.UpdateAdRequest;
@@ -296,13 +295,16 @@ public class AdService {
                 .imageUrls(urls)
                 .recommendedContact(ad.getRecommendedContact())
                 .serviceType(ad.getServiceType());
-        if (ad.getType() == AdType.RECOMMENDATION && currentUserId != null) {
-            builder.likeCount(recommendationReactionRepository.countByAdIdAndKind(ad.getId(), ReactionKind.LIKE));
-            builder.dislikeCount(recommendationReactionRepository.countByAdIdAndKind(ad.getId(), ReactionKind.DISLIKE));
-            builder.currentUserReaction(
-                    recommendationReactionRepository.findByAdIdAndUserId(ad.getId(), currentUserId)
-                            .map(RecommendationReaction::getKind)
-                            .orElse(null));
+        if (ad.getType() == AdType.RECOMMENDATION) {
+            long ratingCount = recommendationReactionRepository.countByAdId(ad.getId());
+            builder.ratingCount(ratingCount);
+            builder.averageRating(ratingCount > 0 ? recommendationReactionRepository.getAverageRatingByAdId(ad.getId()) : null);
+            if (currentUserId != null) {
+                builder.currentUserRating(
+                        recommendationReactionRepository.findByAdIdAndUserId(ad.getId(), currentUserId)
+                                .map(RecommendationReaction::getRating)
+                                .orElse(null));
+            }
         }
         return builder.build();
     }

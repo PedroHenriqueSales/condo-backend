@@ -2,7 +2,6 @@ package br.com.aquidolado.dto;
 
 import br.com.aquidolado.domain.enums.AdStatus;
 import br.com.aquidolado.domain.enums.AdType;
-import br.com.aquidolado.domain.enums.ReactionKind;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -34,7 +33,7 @@ public class AdResponse {
     /** Apenas quando type == RECOMMENDATION. */
     private String recommendedContact;
     private String serviceType;
-    private Long likeCount;
-    private Long dislikeCount;
-    private ReactionKind currentUserReaction;
+    private Double averageRating;
+    private Long ratingCount;
+    private Integer currentUserRating;
 }
