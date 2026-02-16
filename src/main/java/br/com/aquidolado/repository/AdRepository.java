@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+
 public interface AdRepository extends JpaRepository<Ad, Long> {
 
     @Query("SELECT a FROM Ad a " +
@@ -19,14 +21,14 @@ public interface AdRepository extends JpaRepository<Ad, Long> {
     @Query("SELECT a FROM Ad a " +
            "JOIN FETCH a.user JOIN FETCH a.community " +
            "WHERE a.community.id = :communityId AND a.status = :status " +
-           "AND (:type IS NULL OR a.type = :type) " +
+           "AND (:types IS NULL OR a.type IN :types) " +
            "AND (:searchPattern IS NULL OR LOWER(a.title) LIKE :searchPattern " +
            "OR LOWER(COALESCE(a.description, '')) LIKE :searchPattern " +
            "OR LOWER(a.user.name) LIKE :searchPattern)")
     Page<Ad> findByCommunityWithFilters(
             @Param("communityId") Long communityId,
             @Param("status") AdStatus status,
-            @Param("type") AdType type,
+            @Param("types") List<AdType> types,
             @Param("searchPattern") String searchPattern,
             Pageable pageable);
 

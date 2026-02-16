@@ -46,14 +46,18 @@ public class AdController {
     }
 
     @GetMapping
-    @Operation(summary = "Listar anúncios", description = "Lista anúncios de uma comunidade com filtros opcionais (tipo, busca)")
+    @Operation(summary = "Listar anúncios", description = "Lista anúncios de uma comunidade com filtros opcionais (tipo(s), busca)")
     public ResponseEntity<Page<AdResponse>> listByCommunity(
             @RequestParam Long communityId,
             @RequestParam(required = false) AdType type,
+            @RequestParam(required = false) List<AdType> types,
             @RequestParam(required = false) String search,
             @PageableDefault(size = 20) Pageable pageable) {
         Long userId = SecurityUtil.getCurrentUserId();
-        return ResponseEntity.ok(adService.listByCommunity(communityId, userId, type, search, pageable));
+        // Se types foi fornecido, usa ele; senão, se type foi fornecido, cria lista com um elemento; senão null
+        List<AdType> typesToUse = (types != null && !types.isEmpty()) ? types 
+                : (type != null ? List.of(type) : null);
+        return ResponseEntity.ok(adService.listByCommunity(communityId, userId, typesToUse, search, pageable));
     }
 
     @GetMapping("/me")

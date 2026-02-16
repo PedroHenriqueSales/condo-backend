@@ -94,7 +94,7 @@ public class AdService {
     }
 
     @Transactional(readOnly = true)
-    public Page<AdResponse> listByCommunity(Long communityId, Long userId, AdType type, String search, Pageable pageable) {
+    public Page<AdResponse> listByCommunity(Long communityId, Long userId, List<AdType> types, String search, Pageable pageable) {
         validateUserInCommunity(userId, communityId);
 
         // Monta o padrão em Java para evitar LOWER(bytea) no PostgreSQL
@@ -102,8 +102,11 @@ public class AdService {
                 ? "%" + search.trim().toLowerCase() + "%"
                 : null;
 
+        // Se a lista estiver vazia, passa null para retornar todos os tipos
+        List<AdType> typesToUse = (types != null && !types.isEmpty()) ? types : null;
+
         Page<Ad> ads = adRepository.findByCommunityWithFilters(
-                communityId, AdStatus.ACTIVE, type, searchPattern, pageable);
+                communityId, AdStatus.ACTIVE, typesToUse, searchPattern, pageable);
 
         return ads.map(ad -> toResponse(ad, userId));
     }
