@@ -24,7 +24,8 @@ public interface AdRepository extends JpaRepository<Ad, Long> {
            "AND (:types IS NULL OR a.type IN :types) " +
            "AND (:searchPattern IS NULL OR LOWER(a.title) LIKE :searchPattern " +
            "OR LOWER(COALESCE(a.description, '')) LIKE :searchPattern " +
-           "OR LOWER(a.user.name) LIKE :searchPattern)")
+           "OR LOWER(a.user.name) LIKE :searchPattern " +
+           "OR LOWER(COALESCE(a.serviceType, '')) LIKE :searchPattern)")
     Page<Ad> findByCommunityWithFilters(
             @Param("communityId") Long communityId,
             @Param("status") AdStatus status,
