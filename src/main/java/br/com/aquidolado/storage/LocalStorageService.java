@@ -25,12 +25,15 @@ public class LocalStorageService implements StorageService {
 
     private final Path uploadsDir;
     private final String uploadsUrlPrefix;
+    private final ImageCompressionService imageCompressionService;
 
     public LocalStorageService(
             @Value("${app.storage.local.path:uploads}") String uploadsPath,
-            @Value("${app.storage.local.url-prefix:/uploads}") String urlPrefix) {
+            @Value("${app.storage.local.url-prefix:/uploads}") String urlPrefix,
+            ImageCompressionService imageCompressionService) {
         this.uploadsDir = Paths.get(uploadsPath).toAbsolutePath();
         this.uploadsUrlPrefix = urlPrefix.endsWith("/") ? urlPrefix : urlPrefix + "/";
+        this.imageCompressionService = imageCompressionService;
     }
 
     @Override
@@ -38,8 +41,14 @@ public class LocalStorageService implements StorageService {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Arquivo não pode ser vazio");
         }
+        try {
+            file = imageCompressionService.compressIfNeeded(file);
+        } catch (IOException e) {
+            log.error("Falha ao comprimir imagem: {}", e.getMessage());
+            throw new RuntimeException("Falha ao processar imagem", e);
+        }
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("Imagem deve ter no máximo 5MB");
+            throw new IllegalArgumentException("Imagem muito grande mesmo após compressão. Tente outra imagem.");
         }
         String contentType = file.getContentType();
         if (contentType == null || !ALLOWED_TYPES.contains(contentType.toLowerCase())) {

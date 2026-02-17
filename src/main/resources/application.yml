@@ -30,8 +30,9 @@ spring:
 
   servlet:
     multipart:
-      max-file-size: 5MB
-      max-request-size: 20MB
+      # Aceita até 25MB por arquivo; imagens são comprimidas antes de salvar (alvo ≤5MB)
+      max-file-size: 25MB
+      max-request-size: 130MB
 
 server:
   port: ${PORT:8080}

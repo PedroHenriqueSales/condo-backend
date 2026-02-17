@@ -31,13 +31,16 @@ public class CloudinaryStorageService implements StorageService {
 
     private final Cloudinary cloudinary;
     private final String folder;
+    private final ImageCompressionService imageCompressionService;
 
     public CloudinaryStorageService(
             @Value("${app.storage.cloudinary.cloud-name}") String cloudName,
             @Value("${app.storage.cloudinary.api-key}") String apiKey,
             @Value("${app.storage.cloudinary.api-secret}") String apiSecret,
-            @Value("${app.storage.cloudinary.folder:aquidolado}") String folder) {
+            @Value("${app.storage.cloudinary.folder:aquidolado}") String folder,
+            ImageCompressionService imageCompressionService) {
         this.folder = folder;
+        this.imageCompressionService = imageCompressionService;
 
         Map<String, String> config = new HashMap<>();
         config.put("cloud_name", cloudName);
@@ -51,8 +54,14 @@ public class CloudinaryStorageService implements StorageService {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Arquivo não pode ser vazio");
         }
+        try {
+            file = imageCompressionService.compressIfNeeded(file);
+        } catch (IOException e) {
+            log.error("Falha ao comprimir imagem: {}", e.getMessage());
+            throw new RuntimeException("Falha ao processar imagem", e);
+        }
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("Imagem deve ter no máximo 5MB");
+            throw new IllegalArgumentException("Imagem muito grande mesmo após compressão. Tente outra imagem.");
         }
         String contentType = file.getContentType();
         if (contentType == null || !ALLOWED_TYPES.contains(contentType.toLowerCase())) {
