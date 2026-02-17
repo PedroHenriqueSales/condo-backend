@@ -29,9 +29,6 @@ public class RecommendationReactionService {
         if (ad.getType() != br.com.aquidolado.domain.enums.AdType.RECOMMENDATION) {
             throw new IllegalArgumentException("Avaliações só são permitidas em indicações");
         }
-        if (ad.getUser().getId().equals(userId)) {
-            throw new IllegalArgumentException("Quem criou a indicação não pode avaliar");
-        }
         if (!userRepository.existsByIdAndCommunitiesId(userId, ad.getCommunity().getId())) {
             throw new IllegalArgumentException("Você não tem acesso a esta comunidade");
         }
@@ -56,9 +53,6 @@ public class RecommendationReactionService {
                 .orElseThrow(() -> new IllegalArgumentException("Anúncio não encontrado"));
         if (ad.getType() != br.com.aquidolado.domain.enums.AdType.RECOMMENDATION) {
             throw new IllegalArgumentException("Avaliações só são permitidas em indicações");
-        }
-        if (ad.getUser().getId().equals(userId)) {
-            throw new IllegalArgumentException("Quem criou a indicação não pode avaliar");
         }
         recommendationReactionRepository.deleteByAdIdAndUserId(adId, userId);
     }
