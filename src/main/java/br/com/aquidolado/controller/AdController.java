@@ -18,12 +18,14 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/ads")
@@ -31,6 +33,10 @@ import java.util.List;
 @Tag(name = "Anúncios", description = "Gerenciamento de anúncios")
 @SecurityRequirement(name = "bearer-jwt")
 public class AdController {
+
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+            "title", "createdAt", "user.name", "type", "serviceType"
+    );
 
     private final AdService adService;
     private final RecommendationReactionService recommendationReactionService;
@@ -46,7 +52,7 @@ public class AdController {
     }
 
     @GetMapping
-    @Operation(summary = "Listar anúncios", description = "Lista anúncios de uma comunidade com filtros opcionais (tipo(s), busca)")
+    @Operation(summary = "Listar anúncios", description = "Lista anúncios de uma comunidade com filtros opcionais (tipo(s), busca, ordenação)")
     public ResponseEntity<Page<AdResponse>> listByCommunity(
             @RequestParam Long communityId,
             @RequestParam(required = false) AdType type,
@@ -54,6 +60,17 @@ public class AdController {
             @RequestParam(required = false) String search,
             @PageableDefault(size = 20) Pageable pageable) {
         Long userId = SecurityUtil.getCurrentUserId();
+        
+        // Valida campos de ordenação permitidos
+        if (pageable.getSort().isSorted()) {
+            for (Sort.Order order : pageable.getSort()) {
+                String property = order.getProperty();
+                if (!ALLOWED_SORT_FIELDS.contains(property)) {
+                    throw new IllegalArgumentException("Campo de ordenação inválido: " + property);
+                }
+            }
+        }
+        
         // Se types foi fornecido, usa ele; senão, se type foi fornecido, cria lista com um elemento; senão null
         List<AdType> typesToUse = (types != null && !types.isEmpty()) ? types 
                 : (type != null ? List.of(type) : null);
