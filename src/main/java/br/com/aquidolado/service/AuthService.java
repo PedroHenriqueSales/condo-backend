@@ -140,6 +140,9 @@ public class AuthService {
             try {
                 emailService.sendPasswordResetEmail(user, resetToken);
                 log.info("🔐 [AUTH] Email de reset enviado - UserId: {}, Email: {}", user.getId(), user.getEmail());
+            } catch (IllegalStateException e) {
+                // Erro de configuração de email (EMAIL_FROM inválido) - loga mas não quebra o fluxo
+                log.error("🔐 [AUTH] Configuração de email inválida. Verifique EMAIL_FROM. Erro: {}", e.getMessage());
             } catch (Exception e) {
                 log.warn("🔐 [AUTH] Falha ao enviar email de reset para {}: {}", user.getEmail(), e.getMessage());
             }

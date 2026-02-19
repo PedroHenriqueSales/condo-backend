@@ -37,7 +37,11 @@ public class EmailService {
     private Environment environment;
 
     public boolean isEmailConfigured() {
-        return mailSender != null && StringUtils.hasText(smtpHost) && StringUtils.hasText(smtpUsername);
+        return mailSender != null 
+                && StringUtils.hasText(smtpHost) 
+                && StringUtils.hasText(smtpUsername)
+                && StringUtils.hasText(fromEmail)
+                && fromEmail.contains("@"); // Validação básica de formato de email
     }
 
     private boolean isDevProfile() {
@@ -64,6 +68,11 @@ public class EmailService {
             log.warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             return;
         }
+        if (!StringUtils.hasText(fromEmail) || !fromEmail.contains("@")) {
+            log.error("❌ [EMAIL] EMAIL_FROM não configurado ou inválido. Configure a variável EMAIL_FROM com um email válido.");
+            throw new IllegalStateException("EMAIL_FROM não está configurado. Configure a variável de ambiente EMAIL_FROM com um email válido.");
+        }
+        
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -74,6 +83,9 @@ public class EmailService {
             helper.setText(html, true);
             mailSender.send(message);
             log.info("📧 [EMAIL] Email de verificação enviado com sucesso para {}", user.getEmail());
+        } catch (jakarta.mail.internet.AddressException e) {
+            log.error("❌ [EMAIL] Email FROM inválido: {}. Verifique a variável EMAIL_FROM.", fromEmail);
+            throw new IllegalStateException("EMAIL_FROM inválido: " + fromEmail + ". Configure um email válido na variável de ambiente EMAIL_FROM.", e);
         } catch (MessagingException e) {
             log.error("❌ [EMAIL] Falha ao enviar email de verificação para {}: {}", user.getEmail(), e.getMessage(), e);
             throw new RuntimeException("Não foi possível enviar o email de verificação", e);
@@ -96,6 +108,11 @@ public class EmailService {
             log.warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             return;
         }
+        if (!StringUtils.hasText(fromEmail) || !fromEmail.contains("@")) {
+            log.error("❌ [EMAIL] EMAIL_FROM não configurado ou inválido. Configure a variável EMAIL_FROM com um email válido.");
+            throw new IllegalStateException("EMAIL_FROM não está configurado. Configure a variável de ambiente EMAIL_FROM com um email válido.");
+        }
+        
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -106,6 +123,9 @@ public class EmailService {
             helper.setText(html, true);
             mailSender.send(message);
             log.info("📧 [EMAIL] Email de redefinição de senha enviado com sucesso para {}", user.getEmail());
+        } catch (jakarta.mail.internet.AddressException e) {
+            log.error("❌ [EMAIL] Email FROM inválido: {}. Verifique a variável EMAIL_FROM.", fromEmail);
+            throw new IllegalStateException("EMAIL_FROM inválido: " + fromEmail + ". Configure um email válido na variável de ambiente EMAIL_FROM.", e);
         } catch (MessagingException e) {
             log.error("❌ [EMAIL] Falha ao enviar email de reset para {}: {}", user.getEmail(), e.getMessage(), e);
             throw new RuntimeException("Não foi possível enviar o email de redefinição de senha", e);
