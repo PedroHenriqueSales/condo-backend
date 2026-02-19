@@ -34,6 +34,21 @@ spring:
       max-file-size: 25MB
       max-request-size: 130MB
 
+  mail:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
 server:
   port: ${PORT:8080}
 
@@ -51,8 +66,13 @@ jwt:
   secret: ${JWT_SECRET:aquidolado-secret-key-change-in-production-min-256-bits}
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
-# Storage (imagens de anúncios)
+# Storage (imagens de anúncios) e Email
 app:
+  email:
+    from: ${EMAIL_FROM:}
+    frontend-url: ${FRONTEND_URL:http://localhost:5173}
+    verification-expiry-hours: 24
+    reset-expiry-hours: 1
   storage:
     type: ${STORAGE_TYPE:local}  # local ou cloudinary
     local:
@@ -63,6 +83,14 @@ app:
       api-key: ${CLOUDINARY_API_KEY:}
       api-secret: ${CLOUDINARY_API_SECRET:}
       folder: ${CLOUDINARY_FOLDER:aquidolado}  # Opcional: organizar em pasta
+
+# Logging
+logging:
+  level:
+    br.com.aquidolado: INFO
+    org.springframework.mail: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
 
 # Swagger/OpenAPI
 springdoc:

@@ -8,6 +8,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -41,8 +42,36 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Credenciais inválidas"));
     }
 
+    /**
+     * Trata exceções quando o cliente fecha a conexão antes do servidor terminar de responder.
+     * Isso é comum quando o usuário navega para outra página ou cancela a requisição.
+     * Não é um erro crítico, então apenas logamos em DEBUG.
+     */
+    @ExceptionHandler({AsyncRequestNotUsableException.class})
+    public void handleAsyncRequestNotUsable(AsyncRequestNotUsableException ex) {
+        // Cliente cancelou a requisição - comportamento esperado, não logar como erro
+        log.debug("Cliente cancelou a requisição: {}", ex.getMessage());
+    }
+
+    /**
+     * Trata exceções de conexão abortada pelo cliente (ClientAbortException do Tomcat).
+     */
+    @ExceptionHandler(org.apache.catalina.connector.ClientAbortException.class)
+    public void handleClientAbort(org.apache.catalina.connector.ClientAbortException ex) {
+        // Cliente fechou a conexão - comportamento esperado, não logar como erro
+        log.debug("Conexão fechada pelo cliente: {}", ex.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleAny(Exception ex) {
+        // Ignora exceções de conexão abortada pelo cliente (já tratadas acima)
+        if (ex instanceof AsyncRequestNotUsableException || 
+            ex instanceof org.apache.catalina.connector.ClientAbortException ||
+            (ex.getCause() != null && ex.getCause() instanceof org.apache.catalina.connector.ClientAbortException)) {
+            log.debug("Conexão fechada pelo cliente: {}", ex.getMessage());
+            return null; // Não retorna resposta, conexão já foi fechada
+        }
+        
         log.error("Erro não tratado ao processar requisição: {}", ex.getMessage(), ex);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)

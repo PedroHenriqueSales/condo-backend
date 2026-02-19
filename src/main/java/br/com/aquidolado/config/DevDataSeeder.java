@@ -54,6 +54,7 @@ public class DevDataSeeder implements CommandLineRunner {
                     .address("Apto 101")
                     .active(true)
                     .invitesRemaining(5)
+                    .emailVerified(true)
                     .build();
             user = userRepository.save(user);
         }

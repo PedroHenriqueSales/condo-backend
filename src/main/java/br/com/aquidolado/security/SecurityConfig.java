@@ -43,7 +43,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // OPTIONS deve ser o primeiro para permitir preflight CORS
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/auth/register", "/api/auth/login").permitAll()
+                        .requestMatchers("/api/auth/register", "/api/auth/login",
+                        "/api/auth/verify-email", "/api/auth/forgot-password", "/api/auth/reset-password").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
@@ -58,7 +59,6 @@ public class SecurityConfig {
     /**
      * CORS para deploy com frontend em domínio separado.
      * No dev, como usamos proxy do Vite, normalmente isso não é necessário.
-     *
      * Configure via env/props:
      * app.cors.allowed-origins=https://app.aquidolado.com,https://staging.aquidolado.com
      */

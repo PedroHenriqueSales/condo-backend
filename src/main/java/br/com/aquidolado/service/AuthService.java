@@ -26,18 +26,16 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final EventLogService eventLogService;
+    private final TokenService tokenService;
+    private final EmailService emailService;
     private final Environment environment;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (isDevProfile()) {
-            log.info("🔐 [AUTH] Tentativa de registro - Email: {}", request.getEmail());
-        }
+        log.info("🔐 [AUTH] Tentativa de registro - Email: {}", request.getEmail());
 
         if (userRepository.existsByEmail(request.getEmail())) {
-            if (isDevProfile()) {
-                log.warn("🔐 [AUTH] Registro falhou - Email já cadastrado: {}", request.getEmail());
-            }
+            log.warn("🔐 [AUTH] Registro falhou - Email já cadastrado: {}", request.getEmail());
             throw new IllegalArgumentException("Email já cadastrado");
         }
 
@@ -50,31 +48,36 @@ public class AuthService {
                 .address(request.getAddress() != null && !request.getAddress().isBlank() ? request.getAddress().trim() : null)
                 .invitesRemaining(5)
                 .active(true)
+                .emailVerified(false)
                 .build();
 
         user = userRepository.save(user);
 
         eventLogService.log(EventType.REGISTER, user.getId(), null);
 
+        String verificationToken = tokenService.generateVerificationToken(user);
+        try {
+            emailService.sendVerificationEmail(user, verificationToken);
+        } catch (Exception e) {
+            log.warn("🔐 [AUTH] Falha ao enviar email de verificação (conta criada): {}", e.getMessage());
+        }
+
         String token = jwtService.generateToken(user.getEmail(), user.getId());
 
-        if (isDevProfile()) {
-            log.info("🔐 [AUTH] Registro bem-sucedido - UserId: {}, Email: {}, Nome: {}",
-                    user.getId(), user.getEmail(), user.getName());
-        }
+        log.info("🔐 [AUTH] Registro bem-sucedido - UserId: {}, Email: {}, Nome: {}",
+                user.getId(), user.getEmail(), user.getName());
 
         return AuthResponse.builder()
                 .token(token)
                 .userId(user.getId())
                 .email(user.getEmail())
                 .name(user.getName())
+                .emailVerified(false)
                 .build();
     }
 
     public AuthResponse login(LoginRequest request) {
-        if (isDevProfile()) {
-            log.info("🔐 [AUTH] Tentativa de login - Email: {}", request.getEmail());
-        }
+        log.info("🔐 [AUTH] Tentativa de login - Email: {}", request.getEmail());
 
         try {
 
@@ -85,27 +88,72 @@ public class AuthService {
 
             String token = jwtService.generateToken(user.getEmail(), user.getId());
 
-            if (isDevProfile()) {
-                log.info("🔐 [AUTH] Login bem-sucedido - UserId: {}, Email: {}, Nome: {}",
-                        user.getId(), user.getEmail(), user.getName());
-            }
+            log.info("🔐 [AUTH] Login bem-sucedido - UserId: {}, Email: {}, Nome: {}",
+                    user.getId(), user.getEmail(), user.getName());
 
             return AuthResponse.builder()
                     .token(token)
                     .userId(user.getId())
                     .email(user.getEmail())
                     .name(user.getName())
+                    .emailVerified(Boolean.TRUE.equals(user.getEmailVerified()))
                     .build();
         } catch (org.springframework.security.core.AuthenticationException e) {
-            if (isDevProfile()) {
-                log.warn("🔐 [AUTH] Login falhou - Email: {}, Motivo: {}",
-                        request.getEmail(), e.getMessage());
-            }
+            log.warn("🔐 [AUTH] Login falhou - Email: {}, Motivo: {}",
+                    request.getEmail(), e.getMessage());
             throw e;
         }
     }
 
-    private boolean isDevProfile() {
-        return Arrays.asList(environment.getActiveProfiles()).contains("dev");
+    @Transactional
+    public void verifyEmail(String token) {
+        log.info("✅ [AUTH] Verificando email");
+        User user = tokenService.validateVerificationToken(token);
+        user.setEmailVerified(true);
+        userRepository.save(user);
+        tokenService.deleteVerificationTokenForUser(user.getId());
+        log.info("✅ [AUTH] Email verificado com sucesso - UserId: {}, Email: {}", user.getId(), user.getEmail());
     }
+
+    @Transactional
+    public void resendVerificationEmail(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        if (Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new IllegalArgumentException("Email já verificado");
+        }
+        String verificationToken = tokenService.generateVerificationToken(user);
+        try {
+            emailService.sendVerificationEmail(user, verificationToken);
+            log.info("🔐 [AUTH] Email de verificação reenviado - UserId: {}, Email: {}", user.getId(), user.getEmail());
+        } catch (Exception e) {
+            log.warn("🔐 [AUTH] Falha ao reenviar email de verificação: {}", e.getMessage());
+            throw new RuntimeException("Não foi possível reenviar o email de verificação", e);
+        }
+    }
+
+    @Transactional
+    public void forgotPassword(String email) {
+        log.info("🔐 [AUTH] Solicitação de reset de senha - Email: {}", email);
+        userRepository.findByEmail(email).ifPresent(user -> {
+            String resetToken = tokenService.generatePasswordResetToken(user);
+            try {
+                emailService.sendPasswordResetEmail(user, resetToken);
+                log.info("🔐 [AUTH] Email de reset enviado - UserId: {}, Email: {}", user.getId(), user.getEmail());
+            } catch (Exception e) {
+                log.warn("🔐 [AUTH] Falha ao enviar email de reset para {}: {}", user.getEmail(), e.getMessage());
+            }
+        });
+        log.debug("🔐 [AUTH] Processamento de forgot-password concluído");
+    }
+
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        log.info("🔐 [AUTH] Redefinindo senha");
+        User user = tokenService.validateAndConsumePasswordResetToken(token);
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        log.info("🔐 [AUTH] Senha redefinida com sucesso - UserId: {}, Email: {}", user.getId(), user.getEmail());
+    }
+
 }
