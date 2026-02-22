@@ -13,7 +13,9 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -95,11 +97,13 @@ public class EmailService {
         }
 
         if (useSendGridApi()) {
+            log.info("📧 [EMAIL] Modo de envio: SendGrid API (HTTPS). Enviando verificação para {}", user.getEmail());
             sendViaSendGridApi(user.getEmail(), user.getName(), "Confirme seu email - Aquidolado", buildVerificationEmailBody(user.getName(), verificationLink));
             log.info("📧 [EMAIL] Email de verificação enviado com sucesso para {} (SendGrid API)", user.getEmail());
             return;
         }
-        
+
+        log.info("📧 [EMAIL] Modo de envio: SMTP. Enviando verificação para {}", user.getEmail());
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -141,11 +145,13 @@ public class EmailService {
         }
 
         if (useSendGridApi()) {
+            log.info("📧 [EMAIL] Modo de envio: SendGrid API (HTTPS). Enviando reset de senha para {}", user.getEmail());
             sendViaSendGridApi(user.getEmail(), user.getName(), "Redefinição de senha - Aquidolado", buildPasswordResetEmailBody(user.getName(), resetLink));
             log.info("📧 [EMAIL] Email de redefinição de senha enviado com sucesso para {} (SendGrid API)", user.getEmail());
             return;
         }
-        
+
+        log.info("📧 [EMAIL] Modo de envio: SMTP. Enviando reset de senha para {}", user.getEmail());
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -176,14 +182,25 @@ public class EmailService {
                 "content", List.of(Map.of("type", "text/html", "value", htmlContent))
         );
 
-        RestClient restClient = RestClient.create();
-        restClient.post()
-                .uri(SENDGRID_API_URL)
-                .header("Authorization", "Bearer " + sendgridApiKey)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(body)
-                .retrieve()
-                .toBodilessEntity();
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(25));
+        factory.setReadTimeout(Duration.ofSeconds(25));
+        RestClient restClient = RestClient.builder()
+                .requestFactory(factory)
+                .build();
+
+        try {
+            restClient.post()
+                    .uri(SENDGRID_API_URL)
+                    .header("Authorization", "Bearer " + sendgridApiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.error("❌ [EMAIL] Falha na chamada à SendGrid API: {}", e.getMessage(), e);
+            throw new RuntimeException("Falha ao enviar email via SendGrid API: " + e.getMessage(), e);
+        }
     }
 
     private String buildVerificationEmailBody(String name, String link) {
