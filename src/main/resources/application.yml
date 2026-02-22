@@ -45,9 +45,10 @@ spring:
           auth: true
           starttls:
             enable: true
-          connectiontimeout: 5000
-          timeout: 5000
-          writetimeout: 5000
+          # Timeouts em ms (em nuvem pode ser lento; 30s evita falha por timeout)
+          connectiontimeout: ${SMTP_CONNECTION_TIMEOUT_MS:30000}
+          timeout: ${SMTP_TIMEOUT_MS:30000}
+          writetimeout: ${SMTP_WRITE_TIMEOUT_MS:30000}
 
 server:
   port: ${PORT:8080}
@@ -73,6 +74,9 @@ app:
     frontend-url: ${FRONTEND_URL:http://localhost:5173}
     verification-expiry-hours: 24
     reset-expiry-hours: 1
+    # Opcional: API Key do SendGrid. Se definida, usa a API HTTP (porta 443) em vez de SMTP.
+    # Necessário no Render free tier, onde portas SMTP (587) são bloqueadas.
+    sendgrid-api-key: ${SENDGRID_API_KEY:}
   storage:
     type: ${STORAGE_TYPE:local}  # local ou cloudinary
     local:

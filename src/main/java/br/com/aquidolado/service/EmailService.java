@@ -7,16 +7,22 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
+import org.springframework.http.MediaType;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.RestClient;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j
 public class EmailService {
+
+    private static final String SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send";
 
     @Autowired(required = false)
     private JavaMailSender mailSender;
@@ -33,15 +39,30 @@ public class EmailService {
     @Value("${app.email.frontend-url:http://localhost:5173}")
     private String frontendUrl;
 
+    @Value("${app.email.sendgrid-api-key:}")
+    private String sendgridApiKey;
+
     @Autowired(required = false)
     private Environment environment;
 
+    /**
+     * Configurado quando há SMTP válido OU API Key do SendGrid (envio via HTTP, porta 443).
+     * SendGrid API é útil no Render free tier, onde portas SMTP são bloqueadas.
+     */
     public boolean isEmailConfigured() {
+        if (!StringUtils.hasText(fromEmail) || !fromEmail.contains("@")) {
+            return false;
+        }
+        if (StringUtils.hasText(sendgridApiKey)) {
+            return true;
+        }
         return mailSender != null 
                 && StringUtils.hasText(smtpHost) 
-                && StringUtils.hasText(smtpUsername)
-                && StringUtils.hasText(fromEmail)
-                && fromEmail.contains("@"); // Validação básica de formato de email
+                && StringUtils.hasText(smtpUsername);
+    }
+
+    private boolean useSendGridApi() {
+        return StringUtils.hasText(sendgridApiKey) && StringUtils.hasText(fromEmail) && fromEmail.contains("@");
     }
 
     private boolean isDevProfile() {
@@ -71,6 +92,12 @@ public class EmailService {
         if (!StringUtils.hasText(fromEmail) || !fromEmail.contains("@")) {
             log.error("❌ [EMAIL] EMAIL_FROM não configurado ou inválido. Configure a variável EMAIL_FROM com um email válido.");
             throw new IllegalStateException("EMAIL_FROM não está configurado. Configure a variável de ambiente EMAIL_FROM com um email válido.");
+        }
+
+        if (useSendGridApi()) {
+            sendViaSendGridApi(user.getEmail(), user.getName(), "Confirme seu email - Aquidolado", buildVerificationEmailBody(user.getName(), verificationLink));
+            log.info("📧 [EMAIL] Email de verificação enviado com sucesso para {} (SendGrid API)", user.getEmail());
+            return;
         }
         
         try {
@@ -112,6 +139,12 @@ public class EmailService {
             log.error("❌ [EMAIL] EMAIL_FROM não configurado ou inválido. Configure a variável EMAIL_FROM com um email válido.");
             throw new IllegalStateException("EMAIL_FROM não está configurado. Configure a variável de ambiente EMAIL_FROM com um email válido.");
         }
+
+        if (useSendGridApi()) {
+            sendViaSendGridApi(user.getEmail(), user.getName(), "Redefinição de senha - Aquidolado", buildPasswordResetEmailBody(user.getName(), resetLink));
+            log.info("📧 [EMAIL] Email de redefinição de senha enviado com sucesso para {} (SendGrid API)", user.getEmail());
+            return;
+        }
         
         try {
             MimeMessage message = mailSender.createMimeMessage();
@@ -130,6 +163,27 @@ public class EmailService {
             log.error("❌ [EMAIL] Falha ao enviar email de reset para {}: {}", user.getEmail(), e.getMessage(), e);
             throw new RuntimeException("Não foi possível enviar o email de redefinição de senha", e);
         }
+    }
+
+    /**
+     * Envia email via API HTTP do SendGrid (porta 443). Funciona em ambientes que bloqueiam SMTP (ex.: Render free tier).
+     */
+    private void sendViaSendGridApi(String toEmail, String toName, String subject, String htmlContent) {
+        Map<String, Object> body = Map.of(
+                "personalizations", List.of(Map.of("to", List.of(Map.of("email", toEmail, "name", toName != null ? toName : "")))),
+                "from", Map.of("email", fromEmail, "name", "Aquidolado"),
+                "subject", subject,
+                "content", List.of(Map.of("type", "text/html", "value", htmlContent))
+        );
+
+        RestClient restClient = RestClient.create();
+        restClient.post()
+                .uri(SENDGRID_API_URL)
+                .header("Authorization", "Bearer " + sendgridApiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .toBodilessEntity();
     }
 
     private String buildVerificationEmailBody(String name, String link) {
