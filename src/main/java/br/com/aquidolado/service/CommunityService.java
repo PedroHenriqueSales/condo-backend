@@ -285,7 +285,7 @@ public class CommunityService {
     private User findMostActiveMember(Community community, Long excludeUserId, boolean excludeFromMembers) {
         List<User> candidates = community.getMembers().stream()
                 .filter(m -> !m.getId().equals(excludeUserId))
-                .collect(Collectors.toList());
+                .toList();
         if (candidates.isEmpty()) {
             return null;
         }

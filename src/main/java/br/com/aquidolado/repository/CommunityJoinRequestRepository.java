@@ -3,8 +3,6 @@ package br.com.aquidolado.repository;
 import br.com.aquidolado.domain.entity.CommunityJoinRequest;
 import br.com.aquidolado.domain.enums.JoinRequestStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
