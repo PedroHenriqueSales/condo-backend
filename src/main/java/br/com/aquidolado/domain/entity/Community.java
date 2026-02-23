@@ -26,6 +26,13 @@ public class Community {
     @Column(name = "access_code", nullable = false, unique = true)
     private String accessCode;
 
+    @Column(name = "is_private", nullable = false)
+    @Builder.Default
+    private Boolean isPrivate = false;
+
+    @Column(name = "postal_code", nullable = false, length = 10)
+    private String postalCode;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 

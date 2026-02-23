@@ -13,6 +13,8 @@ import java.util.List;
 
 public interface AdRepository extends JpaRepository<Ad, Long> {
 
+    long countByUserIdAndCommunityId(Long userId, Long communityId);
+
     @Query("SELECT a FROM Ad a " +
            "JOIN FETCH a.user JOIN FETCH a.community " +
            "WHERE a.user.id = :userId")
