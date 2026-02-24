@@ -78,10 +78,12 @@ public class AdController {
     }
 
     @GetMapping("/me")
-    @Operation(summary = "Meus anúncios", description = "Lista todos os anúncios criados pelo usuário autenticado")
-    public ResponseEntity<Page<AdResponse>> listMyAds(@PageableDefault(size = 20) Pageable pageable) {
+    @Operation(summary = "Meus anúncios", description = "Lista os anúncios do usuário autenticado, opcionalmente filtrados pela comunidade vigente")
+    public ResponseEntity<Page<AdResponse>> listMyAds(
+            @RequestParam(required = false) Long communityId,
+            @PageableDefault(size = 20) Pageable pageable) {
         Long userId = SecurityUtil.getCurrentUserId();
-        return ResponseEntity.ok(adService.listMyAds(userId, pageable));
+        return ResponseEntity.ok(adService.listMyAds(userId, communityId, pageable));
     }
 
     @GetMapping("/{id}")

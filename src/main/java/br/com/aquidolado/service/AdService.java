@@ -111,7 +111,11 @@ public class AdService {
     }
 
     @Transactional(readOnly = true)
-    public Page<AdResponse> listMyAds(Long userId, Pageable pageable) {
+    public Page<AdResponse> listMyAds(Long userId, Long communityId, Pageable pageable) {
+        if (communityId != null) {
+            return adRepository.findByUserIdAndCommunityIdWithUser(userId, communityId, pageable)
+                    .map(ad -> toResponse(ad, userId));
+        }
         return adRepository.findByUserIdWithUser(userId, pageable).map(ad -> toResponse(ad, userId));
     }
 

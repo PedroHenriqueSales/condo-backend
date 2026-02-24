@@ -22,6 +22,14 @@ public interface AdRepository extends JpaRepository<Ad, Long> {
 
     @Query("SELECT a FROM Ad a " +
            "JOIN FETCH a.user JOIN FETCH a.community " +
+           "WHERE a.user.id = :userId AND a.community.id = :communityId")
+    Page<Ad> findByUserIdAndCommunityIdWithUser(
+            @Param("userId") Long userId,
+            @Param("communityId") Long communityId,
+            Pageable pageable);
+
+    @Query("SELECT a FROM Ad a " +
+           "JOIN FETCH a.user JOIN FETCH a.community " +
            "WHERE a.community.id = :communityId AND a.status = :status " +
            "AND (:types IS NULL OR a.type IN :types) " +
            "AND (:searchPattern IS NULL OR LOWER(a.title) LIKE :searchPattern " +
