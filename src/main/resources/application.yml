@@ -70,7 +70,7 @@ jwt:
 # Storage (imagens de anúncios) e Email
 app:
   reports:
-    suspend-threshold: ${REPORTS_SUSPEND_THRESHOLD:2}
+    suspend-threshold: ${REPORTS_SUSPEND_THRESHOLD:3}
     remove-threshold: ${REPORTS_REMOVE_THRESHOLD:4}
   email:
     from: ${EMAIL_FROM:}
