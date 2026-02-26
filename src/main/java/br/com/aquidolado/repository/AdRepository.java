@@ -20,6 +20,10 @@ public interface AdRepository extends JpaRepository<Ad, Long> {
            "WHERE a.user.id = :userId")
     Page<Ad> findByUserIdWithUser(@Param("userId") Long userId, Pageable pageable);
 
+    java.util.List<Ad> findByUser_Id(Long userId);
+
+    java.util.List<Ad> findByCommunity_Id(Long communityId);
+
     @Query("SELECT a FROM Ad a " +
            "JOIN FETCH a.user JOIN FETCH a.community " +
            "WHERE a.user.id = :userId AND a.community.id = :communityId")

@@ -1,5 +1,6 @@
 package br.com.aquidolado.dto;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -20,10 +21,15 @@ public class RegisterRequest {
     @Size(min = 6, max = 100)
     private String password;
 
-    @NotBlank(message = "Telefone/WhatsApp é obrigatório")
     @Size(max = 50)
     private String whatsapp;
 
     @Size(max = 500)
     private String address;
+
+    @AssertTrue(message = "É necessário aceitar os Termos de Uso e a Política de Privacidade")
+    private Boolean acceptTerms;
+
+    @AssertTrue(message = "É necessário aceitar os Termos de Uso e a Política de Privacidade")
+    private Boolean acceptPrivacy;
 }

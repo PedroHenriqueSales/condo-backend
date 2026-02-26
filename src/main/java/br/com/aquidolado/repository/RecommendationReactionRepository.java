@@ -18,4 +18,7 @@ public interface RecommendationReactionRepository extends JpaRepository<Recommen
 
     void deleteByAdIdAndUserId(Long adId, Long userId);
 
+    void deleteByUser_Id(Long userId);
+
+    void deleteByAd_Id(Long adId);
 }

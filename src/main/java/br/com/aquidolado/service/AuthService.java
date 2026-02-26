@@ -15,7 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
+import java.time.Instant;
 
 @Slf4j
 @Service
@@ -39,7 +39,10 @@ public class AuthService {
             throw new IllegalArgumentException("Email já cadastrado");
         }
 
-        String whatsapp = PhoneUtil.normalize(request.getWhatsapp());
+        String whatsapp = request.getWhatsapp() != null && !request.getWhatsapp().isBlank()
+                ? PhoneUtil.normalize(request.getWhatsapp())
+                : null;
+        Instant now = Instant.now();
         User user = User.builder()
                 .name(request.getName())
                 .email(request.getEmail())
@@ -49,6 +52,8 @@ public class AuthService {
                 .invitesRemaining(5)
                 .active(true)
                 .emailVerified(false)
+                .termsAcceptedAt(now)
+                .privacyAcceptedAt(now)
                 .build();
 
         user = userRepository.save(user);

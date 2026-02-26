@@ -37,7 +37,7 @@ public class CloudinaryStorageService implements StorageService {
             @Value("${app.storage.cloudinary.cloud-name}") String cloudName,
             @Value("${app.storage.cloudinary.api-key}") String apiKey,
             @Value("${app.storage.cloudinary.api-secret}") String apiSecret,
-            @Value("${app.storage.cloudinary.folder:aquidolado}") String folder,
+            @Value("${app.storage.cloudinary.folder:aqui}") String folder,
             ImageCompressionService imageCompressionService) {
         this.folder = folder;
         this.imageCompressionService = imageCompressionService;

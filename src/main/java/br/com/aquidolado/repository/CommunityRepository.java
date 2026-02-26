@@ -15,4 +15,6 @@ public interface CommunityRepository extends JpaRepository<Community, Long> {
 
     @Query("SELECT DISTINCT c FROM Community c LEFT JOIN FETCH c.createdBy LEFT JOIN FETCH c.members WHERE c.id = :id")
     Optional<Community> findByIdWithCreatedByAndMembers(@Param("id") Long id);
+
+    java.util.List<Community> findByCreatedBy_Id(Long createdById);
 }

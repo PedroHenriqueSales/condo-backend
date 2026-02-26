@@ -36,4 +36,7 @@ public class AdResponse {
     private Double averageRating;
     private Long ratingCount;
     private Integer currentUserRating;
+
+    /** Preenchido quando o anúncio foi suspenso automaticamente por denúncias (status = PAUSED). */
+    private Instant suspendedByReportsAt;
 }

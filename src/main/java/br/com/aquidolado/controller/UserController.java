@@ -32,4 +32,12 @@ public class UserController {
         Long userId = SecurityUtil.getCurrentUserId();
         return ResponseEntity.ok(userService.updateProfile(userId, request));
     }
+
+    @DeleteMapping("/me")
+    @Operation(summary = "Excluir conta", description = "Exclui a conta do usuário e todos os dados associados (LGPD)")
+    public ResponseEntity<Void> deleteAccount() {
+        Long userId = SecurityUtil.getCurrentUserId();
+        userService.deleteAccount(userId);
+        return ResponseEntity.noContent().build();
+    }
 }

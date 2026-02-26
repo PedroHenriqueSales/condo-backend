@@ -24,6 +24,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
     }
 
+    @ExceptionHandler(br.com.aquidolado.exception.AlreadyReportedException.class)
+    public ResponseEntity<Map<String, String>> handleAlreadyReported(br.com.aquidolado.exception.AlreadyReportedException ex) {
+        log.warn("Denúncia duplicada: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", ex.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();

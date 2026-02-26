@@ -98,7 +98,7 @@ public class EmailService {
 
         if (useSendGridApi()) {
             log.info("📧 [EMAIL] Modo de envio: SendGrid API (HTTPS). Enviando verificação para {}", user.getEmail());
-            sendViaSendGridApi(user.getEmail(), user.getName(), "Confirme seu email - Aquidolado", buildVerificationEmailBody(user.getName(), verificationLink));
+            sendViaSendGridApi(user.getEmail(), user.getName(), "Confirme seu email - Aqui", buildVerificationEmailBody(user.getName(), verificationLink));
             log.info("📧 [EMAIL] Email de verificação enviado com sucesso para {} (SendGrid API)", user.getEmail());
             return;
         }
@@ -109,7 +109,7 @@ public class EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setFrom(fromEmail);
             helper.setTo(user.getEmail());
-            helper.setSubject("Confirme seu email - Aquidolado");
+            helper.setSubject("Confirme seu email - Aqui");
             String html = buildVerificationEmailBody(user.getName(), verificationLink);
             helper.setText(html, true);
             mailSender.send(message);
@@ -146,7 +146,7 @@ public class EmailService {
 
         if (useSendGridApi()) {
             log.info("📧 [EMAIL] Modo de envio: SendGrid API (HTTPS). Enviando reset de senha para {}", user.getEmail());
-            sendViaSendGridApi(user.getEmail(), user.getName(), "Redefinição de senha - Aquidolado", buildPasswordResetEmailBody(user.getName(), resetLink));
+            sendViaSendGridApi(user.getEmail(), user.getName(), "Redefinição de senha - Aqui", buildPasswordResetEmailBody(user.getName(), resetLink));
             log.info("📧 [EMAIL] Email de redefinição de senha enviado com sucesso para {} (SendGrid API)", user.getEmail());
             return;
         }
@@ -157,7 +157,7 @@ public class EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setFrom(fromEmail);
             helper.setTo(user.getEmail());
-            helper.setSubject("Redefinição de senha - Aquidolado");
+            helper.setSubject("Redefinição de senha - Aqui");
             String html = buildPasswordResetEmailBody(user.getName(), resetLink);
             helper.setText(html, true);
             mailSender.send(message);
@@ -177,7 +177,7 @@ public class EmailService {
     private void sendViaSendGridApi(String toEmail, String toName, String subject, String htmlContent) {
         Map<String, Object> body = Map.of(
                 "personalizations", List.of(Map.of("to", List.of(Map.of("email", toEmail, "name", toName != null ? toName : "")))),
-                "from", Map.of("email", fromEmail, "name", "Aquidolado"),
+                "from", Map.of("email", fromEmail, "name", "Aqui"),
                 "subject", subject,
                 "content", List.of(Map.of("type", "text/html", "value", htmlContent))
         );
@@ -206,7 +206,7 @@ public class EmailService {
     private String buildVerificationEmailBody(String name, String link) {
         return """
             <p>Olá, %s!</p>
-            <p>Clique no link abaixo para confirmar seu email e ativar sua conta no Aquidolado:</p>
+            <p>Clique no link abaixo para confirmar seu email e ativar sua conta no Aqui:</p>
             <p><a href="%s" style="display:inline-block;padding:10px 20px;background:#2563eb;color:white;text-decoration:none;border-radius:6px;">Confirmar email</a></p>
             <p>Ou copie e cole no navegador:</p>
             <p style="word-break:break-all;">%s</p>
@@ -218,7 +218,7 @@ public class EmailService {
     private String buildPasswordResetEmailBody(String name, String link) {
         return """
             <p>Olá, %s!</p>
-            <p>Recebemos uma solicitação para redefinir a senha da sua conta no Aquidolado.</p>
+            <p>Recebemos uma solicitação para redefinir a senha da sua conta no Aqui.</p>
             <p><a href="%s" style="display:inline-block;padding:10px 20px;background:#2563eb;color:white;text-decoration:none;border-radius:6px;">Redefinir senha</a></p>
             <p>Ou copie e cole no navegador:</p>
             <p style="word-break:break-all;">%s</p>

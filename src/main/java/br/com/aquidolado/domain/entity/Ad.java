@@ -56,4 +56,8 @@ public class Ad {
     /** Tipo de serviço (apenas quando type == RECOMMENDATION). */
     @Column(name = "service_type", length = 100)
     private String serviceType;
+
+    /** Preenchido quando o anúncio foi suspenso automaticamente por denúncias (status = PAUSED). */
+    @Column(name = "suspended_by_reports_at")
+    private Instant suspendedByReportsAt;
 }

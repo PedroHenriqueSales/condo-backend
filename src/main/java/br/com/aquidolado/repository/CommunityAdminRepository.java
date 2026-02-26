@@ -11,8 +11,6 @@ public interface CommunityAdminRepository extends JpaRepository<CommunityAdmin, 
 
     boolean existsByCommunity_IdAndUser_Id(Long communityId, Long userId);
 
-    List<CommunityAdmin> findByUser_Id(Long userId);
-
     @Query("SELECT ca FROM CommunityAdmin ca JOIN FETCH ca.community c LEFT JOIN FETCH c.createdBy WHERE ca.user.id = :userId")
     List<CommunityAdmin> findByUser_IdWithCommunityAndCreatedBy(@Param("userId") Long userId);
 
@@ -22,4 +20,8 @@ public interface CommunityAdminRepository extends JpaRepository<CommunityAdmin, 
     void deleteByCommunity_IdAndUser_Id(Long communityId, Long userId);
 
     long countByCommunity_Id(Long communityId);
+
+    void deleteByUser_Id(Long userId);
+
+    void deleteByCommunity_Id(Long communityId);
 }

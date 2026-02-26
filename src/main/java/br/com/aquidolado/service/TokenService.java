@@ -5,7 +5,6 @@ import br.com.aquidolado.domain.entity.PasswordResetToken;
 import br.com.aquidolado.domain.entity.User;
 import br.com.aquidolado.repository.EmailVerificationTokenRepository;
 import br.com.aquidolado.repository.PasswordResetTokenRepository;
-import br.com.aquidolado.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -119,6 +118,12 @@ public class TokenService {
     @Transactional
     public void deleteVerificationTokenForUser(Long userId) {
         verificationTokenRepository.deleteByUser_Id(userId);
+    }
+
+    @Transactional
+    public void deleteAllTokensForUser(Long userId) {
+        verificationTokenRepository.deleteByUser_Id(userId);
+        passwordResetTokenRepository.deleteByUser_Id(userId);
     }
 
     /**

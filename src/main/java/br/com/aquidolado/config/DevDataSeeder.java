@@ -27,7 +27,7 @@ import java.time.Instant;
 @RequiredArgsConstructor
 public class DevDataSeeder implements CommandLineRunner {
 
-    private static final String SEED_EMAIL = "seed@aquidolado.local";
+    private static final String SEED_EMAIL = "seed@aqui.local";
     private static final String SEED_PASSWORD = "123456";
     private static final String SEED_ACCESS_CODE = "SEED2026";
 

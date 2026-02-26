@@ -131,6 +131,9 @@ public class AdService {
         if (ad.getStatus() == AdStatus.CLOSED) {
             throw new IllegalArgumentException("Não é possível editar anúncios encerrados");
         }
+        if (ad.getStatus() == AdStatus.REMOVED) {
+            throw new IllegalArgumentException("Anúncio removido por denúncias");
+        }
 
         if (request.getType() == AdType.RECOMMENDATION) {
             if (newImages != null && !newImages.stream().allMatch(f -> f == null || f.isEmpty())) {
@@ -196,6 +199,10 @@ public class AdService {
             throw new IllegalArgumentException("Só é possível reativar anúncios pausados");
         }
 
+        if (ad.getSuspendedByReportsAt() != null) {
+            throw new IllegalArgumentException("Anúncio suspenso por denúncias. Entre em contato para solicitar revisão.");
+        }
+
         ad.setStatus(AdStatus.ACTIVE);
         ad = adRepository.save(ad);
 
@@ -209,6 +216,9 @@ public class AdService {
 
         if (!ad.getUser().getId().equals(userId)) {
             throw new IllegalArgumentException("Você não pode encerrar este anúncio");
+        }
+        if (ad.getStatus() == AdStatus.REMOVED) {
+            throw new IllegalArgumentException("Anúncio removido por denúncias");
         }
 
         ad.setStatus(AdStatus.CLOSED);
@@ -240,6 +250,10 @@ public class AdService {
                 .orElseThrow(() -> new IllegalArgumentException("Anúncio não encontrado"));
 
         validateUserInCommunity(userId, ad.getCommunity().getId());
+
+        if (ad.getStatus() == AdStatus.REMOVED && !ad.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("Anúncio não encontrado");
+        }
 
         return toResponse(ad, userId);
     }
@@ -298,7 +312,8 @@ public class AdService {
                 .createdAt(ad.getCreatedAt())
                 .imageUrls(urls)
                 .recommendedContact(ad.getRecommendedContact())
-                .serviceType(ad.getServiceType());
+                .serviceType(ad.getServiceType())
+                .suspendedByReportsAt(ad.getSuspendedByReportsAt());
         if (ad.getType() == AdType.RECOMMENDATION) {
             long ratingCount = recommendationReactionRepository.countByAdId(ad.getId());
             builder.ratingCount(ratingCount);

@@ -1,6 +1,6 @@
 spring:
   application:
-    name: aquidolado-api
+    name: aqui-api
 
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:aquidolado}
@@ -69,6 +69,9 @@ jwt:
 
 # Storage (imagens de anúncios) e Email
 app:
+  reports:
+    suspend-threshold: ${REPORTS_SUSPEND_THRESHOLD:2}
+    remove-threshold: ${REPORTS_REMOVE_THRESHOLD:4}
   email:
     from: ${EMAIL_FROM:}
     frontend-url: ${FRONTEND_URL:http://localhost:5173}
@@ -86,7 +89,7 @@ app:
       cloud-name: ${CLOUDINARY_CLOUD_NAME:}
       api-key: ${CLOUDINARY_API_KEY:}
       api-secret: ${CLOUDINARY_API_SECRET:}
-      folder: ${CLOUDINARY_FOLDER:aquidolado}  # Opcional: organizar em pasta
+      folder: ${CLOUDINARY_FOLDER:aqui}  # Opcional: organizar em pasta
 
 # Logging
 logging:
