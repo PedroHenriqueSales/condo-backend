@@ -67,6 +67,8 @@ public class SecurityConfig {
             @Value("${app.cors.allowed-origins:}") String allowedOriginsCsv) {
         CorsConfiguration cfg = new CorsConfiguration();
 
+        List<String> patterns = new ArrayList<>();
+
         if (StringUtils.hasText(allowedOriginsCsv)) {
             List<String> origins = Arrays.stream(allowedOriginsCsv.split(","))
                     .map(String::trim)
@@ -75,19 +77,17 @@ public class SecurityConfig {
             
             // Usa patterns para suportar wildcards (ex: URLs do Vercel)
             // Adiciona padrão do Vercel automaticamente se detectar URL do Vercel
-            List<String> patterns = new ArrayList<>(origins);
+            patterns = new ArrayList<>(origins);
             
             // Se houver alguma URL do Vercel, adiciona o padrão wildcard
             boolean hasVercelUrl = origins.stream().anyMatch(origin -> origin.contains(".vercel.app"));
             if (hasVercelUrl && !patterns.contains("https://*.vercel.app")) {
                 patterns.add("https://*.vercel.app");
             }
-            
-            cfg.setAllowedOriginPatterns(patterns);
         } else {
             // Dev: libera o Vite dev server e dispositivos na rede local (ex.: iPhone)
             if (Arrays.asList(environment.getActiveProfiles()).contains("dev")) {
-                cfg.setAllowedOriginPatterns(List.of(
+                patterns = new ArrayList<>(List.of(
                         "http://localhost:5173",
                         "http://127.0.0.1:5173",
                         "http://192.168.*:5173",
@@ -100,11 +100,25 @@ public class SecurityConfig {
                         "http://172.30.*:5173",
                         "http://172.31.*:5173"
                 ));
-            } else {
-                // Sem origins configuradas → não libera cross-origin por padrão
-                cfg.setAllowedOriginPatterns(List.of());
             }
         }
+
+        // Sempre permite chamadas a partir de apps Capacitor (WebView)
+        // Android envia Origin "http://localhost" ou "http://localhost:PORT"; iOS envia "capacitor://localhost"
+        List<String> capacitorOrigins = List.of(
+                "capacitor://localhost",
+                "http://localhost",
+                "http://localhost:*",
+                "http://127.0.0.1",
+                "http://127.0.0.1:*"
+        );
+        for (String origin : capacitorOrigins) {
+            if (!patterns.contains(origin)) {
+                patterns.add(origin);
+            }
+        }
+
+        cfg.setAllowedOriginPatterns(patterns);
 
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
