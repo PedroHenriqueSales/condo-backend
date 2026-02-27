@@ -67,8 +67,11 @@ jwt:
   secret: ${JWT_SECRET:aquidolado-secret-key-change-in-production-min-256-bits}
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
-# Storage (imagens de anúncios) e Email
+# Storage (imagens de anúncios), Email e CORS
 app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+    extra-origins: ${CORS_EXTRA_ORIGINS:}
   reports:
     suspend-threshold: ${REPORTS_SUSPEND_THRESHOLD:3}
     remove-threshold: ${REPORTS_REMOVE_THRESHOLD:4}

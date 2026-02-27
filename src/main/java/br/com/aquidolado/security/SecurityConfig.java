@@ -64,7 +64,8 @@ public class SecurityConfig {
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource(
-            @Value("${app.cors.allowed-origins:}") String allowedOriginsCsv) {
+            @Value("${app.cors.allowed-origins:}") String allowedOriginsCsv,
+            @Value("${app.cors.extra-origins:}") String extraOriginsCsv) {
         CorsConfiguration cfg = new CorsConfiguration();
 
         List<String> patterns = new ArrayList<>();
@@ -104,18 +105,40 @@ public class SecurityConfig {
         }
 
         // Sempre permite chamadas a partir de apps Capacitor (WebView)
-        // Android envia Origin "http://localhost" ou "http://localhost:PORT"; iOS envia "capacitor://localhost"
+        // Android: "http://localhost" ou "http://localhost:PORT" (com ou sem barra final)
+        // iOS: "capacitor://localhost"; alguns clientes enviam "null"
         List<String> capacitorOrigins = List.of(
                 "capacitor://localhost",
+                "capacitor://localhost/",
                 "http://localhost",
+                "http://localhost/",
                 "http://localhost:*",
+                "http://localhost:*/",
                 "http://127.0.0.1",
-                "http://127.0.0.1:*"
+                "http://127.0.0.1/",
+                "http://127.0.0.1:*",
+                "https://localhost",
+                "https://localhost/",
+                "https://localhost:*",
+                "https://127.0.0.1",
+                "https://127.0.0.1:*",
+                "null"
         );
         for (String origin : capacitorOrigins) {
             if (!patterns.contains(origin)) {
                 patterns.add(origin);
             }
+        }
+
+        // Origens extras (ex.: Origin exata do app no emulador, para depuração)
+        if (StringUtils.hasText(extraOriginsCsv)) {
+            List<String> finalPatterns = patterns;
+            Arrays.stream(extraOriginsCsv.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .forEach(origin -> {
+                        if (!finalPatterns.contains(origin)) finalPatterns.add(origin);
+                    });
         }
 
         cfg.setAllowedOriginPatterns(patterns);
