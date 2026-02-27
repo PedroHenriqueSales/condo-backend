@@ -37,12 +37,20 @@ API REST para anúncios entre moradores de condomínio. MVP minimalista focado e
    export JWT_SECRET=sua-chave-secreta-minimo-256-bits-para-producao
    ```
 
-3. **Execute a aplicação:**
+3. **Execute a aplicação (profile `dev`):**
    ```bash
    mvn spring-boot:run -Dspring-boot.run.profiles=dev
    ```
 
 4. A API estará disponível em `http://localhost:8080`
+
+## Perfis (profiles) e ambientes
+
+- **dev**: desenvolvimento local (logs DEBUG, `show-sql`, CORS amplo, seed de dados).
+- **homolog**: homologação/staging (ex.: Render), usando `application-homolog.yml` + variáveis de ambiente de teste.
+- **prod**: produção, usando `application-prod.yml` + variáveis de ambiente finais.
+
+Em ambientes remotos, defina `SPRING_PROFILES_ACTIVE` para `homolog` ou `prod`, conforme o ambiente.
 
 ## Documentação da API (Swagger)
 
@@ -92,4 +100,4 @@ Consulte `docs/DOCUMENTACAO_TECNICA.md` para detalhamento de arquitetura, entida
 
 ## Deploy no Railway
 
-Use as variáveis de ambiente conforme o arquivo `env.railway.example`.
+Use as variáveis de ambiente conforme o arquivo `env.railway.example` (ajustando `SPRING_PROFILES_ACTIVE` para `homolog` ou `prod` de acordo com o ambiente).

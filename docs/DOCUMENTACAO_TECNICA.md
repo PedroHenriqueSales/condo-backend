@@ -161,22 +161,24 @@ Resposta: `Page<T>` com `content`, `totalElements`, `totalPages`, `number`, etc.
 
 | Profile | Uso |
 |---------|-----|
-| `dev` | Logs DEBUG, show-sql, CORS amplo |
-| `prod` | Logs limitados, CORS via env |
+| `dev` | Desenvolvimento local: logs DEBUG, `show-sql`, CORS amplo, seed de dados (`DevDataSeeder`) |
+| `homolog` | Homologação/staging: mesmo comportamento de produção, mas com banco/URLs/secrets de teste |
+| `prod` | Produção: logs limitados, CORS via env, Cloudinary para storage, sem seed de dados |
 
 ### 7.2 Variáveis de ambiente
 
 | Variável | Descrição |
 |----------|-----------|
-| `DB_HOST` | Host PostgreSQL |
+| `DB_HOST` | Host PostgreSQL (diferente para dev/homolog/prod) |
 | `DB_PORT` | Porta PostgreSQL |
-| `DB_NAME` | Nome do banco |
+| `DB_NAME` | Nome do banco (pode variar por ambiente, ex.: `aquidolado_dev`, `aquidolado_homolog`, `aquidolado_prod`) |
 | `DB_USER` | Usuário |
 | `DB_PASSWORD` | Senha |
-| `JWT_SECRET` | Chave JWT (≥256 bits em prod) |
+| `JWT_SECRET` | Chave JWT (≥256 bits em prod; usar valores distintos em homolog e prod) |
 | `JWT_EXPIRATION_MS` | Expiração do token (ms) |
-| `CORS_ALLOWED_ORIGINS` | Origens permitidas (prod) |
+| `CORS_ALLOWED_ORIGINS` | Origens permitidas (homolog/prod) |
 | `PORT` | Porta da aplicação |
+| `SPRING_PROFILES_ACTIVE` | Profile ativo: `dev` (local), `homolog` (staging) ou `prod` (produção) |
 
 ## 8. Tratamento de erros
 
@@ -198,12 +200,12 @@ O backend usa **Render** (free tier) com custo zero. O banco PostgreSQL é provi
 - Cria diretório `uploads` (ephemeral no Render)
 - `EXPOSE 8080`, `ENTRYPOINT ["java", "-jar", "app.jar"]`
 
-**Variáveis de ambiente (Render):**
+**Variáveis de ambiente (Render - homologação):**
 
-- `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` — do PostgreSQL Render
-- `JWT_SECRET` — mínimo 32 caracteres
-- `CORS_ALLOWED_ORIGINS` — URL do frontend (ex.: `https://aquidolado-xxxx.vercel.app`)
-- `SPRING_PROFILES_ACTIVE=prod`
+- `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` — do PostgreSQL Render (banco de homolog)
+- `JWT_SECRET` — mínimo 32 caracteres (diferente do de produção)
+- `CORS_ALLOWED_ORIGINS` — URL do frontend de homolog (ex.: `https://aquidolado-xxxx.vercel.app`)
+- `SPRING_PROFILES_ACTIVE=homolog`
 - `PORT` — definido automaticamente pelo Render
 
 **Arquivos de exemplo:**
@@ -216,6 +218,28 @@ O backend usa **Render** (free tier) com custo zero. O banco PostgreSQL é provi
 - Spin-down após 15 min de inatividade; cold start ~1 min
 - PostgreSQL expira em 30 dias
 - Filesystem ephemeral: imagens em `uploads/` são perdidas em redeploy
+
+### 10.1 Checklist de validação por ambiente
+
+**Dev (`dev`)**
+
+- Subir PostgreSQL local (Docker Compose).
+- Rodar com `SPRING_PROFILES_ACTIVE=dev` (ou parâmetro do Maven).
+- Acessar Swagger UI (`/swagger-ui.html`) e testar fluxo básico (registro, login, criação de anúncio).
+
+**Homolog (`homolog`)**
+
+- Garantir que `SPRING_PROFILES_ACTIVE=homolog` está configurado na plataforma (Render/Railway).
+- Confirmar variáveis de banco (`DB_*`), JWT, Cloudinary e `CORS_ALLOWED_ORIGINS`.
+- Verificar `/actuator/health`.
+- Executar smoke test: registro/login, entrada em comunidade, criação de anúncio, upload de imagem, envio de email (mock ou real).
+
+**Produção (`prod`)**
+
+- Criar banco de produção (schema vazio, apenas com migrations Flyway).
+- Configurar variáveis de ambiente com valores definitivos (banco, JWT, CORS, Cloudinary, EMAIL_FROM).
+- Subir com `SPRING_PROFILES_ACTIVE=prod` e monitorar logs iniciais.
+- Executar smoke test completo (login, CRUD básico, upload de imagem, envio de email real, navegação pelo fluxo principal).
 
 ## 11. Armazenamento de Imagens (Storage)
 
@@ -235,7 +259,7 @@ O sistema suporta duas implementações de armazenamento via interface `StorageS
 - Configuração em `app.storage.local.path` e `app.storage.local.url-prefix`
 - **Limitação:** Não funciona em produção no Render (filesystem ephemeral)
 
-### 11.3 CloudinaryStorageService (Produção)
+### 11.3 CloudinaryStorageService (Produção / Homologação)
 
 **Configuração:**
 
@@ -244,13 +268,13 @@ O sistema suporta duas implementações de armazenamento via interface `StorageS
    - `cloud_name`
    - `api_key`
    - `api_secret`
-3. Configurar variáveis de ambiente no Render:
+3. Configurar variáveis de ambiente no Render (homolog) e no provedor de produção:
    ```
    CLOUDINARY_CLOUD_NAME=seu-cloud-name
    CLOUDINARY_API_KEY=sua-api-key
    CLOUDINARY_API_SECRET=sua-api-secret
    ```
-4. Definir `app.storage.type=cloudinary` em `application-prod.yml`
+4. Definir `app.storage.type=cloudinary` em `application-homolog.yml` e `application-prod.yml`
 
 **Características:**
 
@@ -280,7 +304,7 @@ aquidolado/
 A seleção entre implementações é feita automaticamente via anotações Spring:
 
 - `@ConditionalOnProperty`: `LocalStorageService` só ativa quando `app.storage.type=local` (padrão)
-- `@Profile("prod")`: `CloudinaryStorageService` só ativa quando profile `prod` está ativo E `app.storage.type=cloudinary`
+- `@Profile({"prod", "homolog"})`: `CloudinaryStorageService` só ativa quando profile `prod` **ou** `homolog` está ativo **e** `app.storage.type=cloudinary`
 
 Isso garante que apenas uma implementação esteja ativa por vez, evitando conflitos.
 

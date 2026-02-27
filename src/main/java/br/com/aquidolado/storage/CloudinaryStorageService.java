@@ -20,7 +20,7 @@ import java.util.UUID;
 
 @Slf4j
 @Service
-@Profile("prod")
+@Profile({"prod", "homolog"})
 @ConditionalOnProperty(name = "app.storage.type", havingValue = "cloudinary")
 public class CloudinaryStorageService implements StorageService {
 
