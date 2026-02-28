@@ -1,5 +1,6 @@
 package br.com.aquidolado.service;
 
+import br.com.aquidolado.domain.entity.Ad;
 import br.com.aquidolado.domain.entity.Community;
 import br.com.aquidolado.domain.entity.CommunityAdmin;
 import br.com.aquidolado.domain.entity.CommunityJoinRequest;
@@ -10,11 +11,17 @@ import br.com.aquidolado.dto.CreateCommunityRequest;
 import br.com.aquidolado.dto.JoinRequestResponse;
 import br.com.aquidolado.dto.MemberSummary;
 import br.com.aquidolado.dto.UpdateCommunityRequest;
+import br.com.aquidolado.repository.AdImageRepository;
 import br.com.aquidolado.repository.AdRepository;
+import br.com.aquidolado.repository.CommentLikeRepository;
 import br.com.aquidolado.repository.CommunityAdminRepository;
 import br.com.aquidolado.repository.CommunityJoinRequestRepository;
 import br.com.aquidolado.repository.CommunityRepository;
+import br.com.aquidolado.repository.RecommendationCommentRepository;
+import br.com.aquidolado.repository.RecommendationReactionRepository;
+import br.com.aquidolado.repository.ReportRepository;
 import br.com.aquidolado.repository.UserRepository;
+import br.com.aquidolado.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +44,12 @@ public class CommunityService {
     private final CommunityAdminRepository communityAdminRepository;
     private final CommunityJoinRequestRepository joinRequestRepository;
     private final AdRepository adRepository;
+    private final ReportRepository reportRepository;
+    private final RecommendationReactionRepository recommendationReactionRepository;
+    private final RecommendationCommentRepository recommendationCommentRepository;
+    private final CommentLikeRepository commentLikeRepository;
+    private final AdImageRepository adImageRepository;
+    private final StorageService storageService;
 
     @Transactional
     public CommunityResponse create(Long userId, CreateCommunityRequest request) {
@@ -227,6 +240,32 @@ public class CommunityService {
                 .build());
     }
 
+    /**
+     * Remove um membro da comunidade. Apenas administrador pode remover; não pode remover a si mesmo.
+     */
+    @Transactional
+    public void removeMember(Long communityId, Long targetUserId, Long userId) {
+        requireAdmin(communityId, userId);
+        if (targetUserId.equals(userId)) {
+            throw new IllegalArgumentException("Use \"Deixar comunidade\" ou \"Deixar de ser administrador\" para sair você mesmo");
+        }
+        User targetUser = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        Community community = communityRepository.findById(communityId)
+                .orElseThrow(() -> new IllegalArgumentException("Condomínio não encontrado"));
+
+        if (!targetUser.getCommunities().remove(community)) {
+            throw new IllegalArgumentException("O usuário não é membro desta comunidade");
+        }
+
+        if (communityAdminRepository.existsByCommunity_IdAndUser_Id(communityId, targetUserId)) {
+            communityAdminRepository.deleteByCommunity_IdAndUser_Id(communityId, targetUserId);
+            ensureCommunityHasAdmin(communityId, targetUserId, true);
+        }
+
+        userRepository.save(targetUser);
+    }
+
     @Transactional
     public void leaveAdminRole(Long communityId, Long userId) {
         requireAdmin(communityId, userId);
@@ -258,6 +297,43 @@ public class CommunityService {
         communityRepository.save(community);
         Community withDetails = communityRepository.findByIdWithCreatedByAndMembers(communityId).orElse(community);
         return toResponseWithDetails(withDetails, userId);
+    }
+
+    /**
+     * Apaga a comunidade. Permitido somente para o administrador quando ele for o único membro.
+     */
+    @Transactional
+    public void deleteCommunity(Long communityId, Long userId) {
+        requireAdmin(communityId, userId);
+        Community community = communityRepository.findByIdWithCreatedByAndMembers(communityId)
+                .orElseThrow(() -> new IllegalArgumentException("Condomínio não encontrado"));
+
+        if (community.getMembers().size() != 1) {
+            throw new IllegalArgumentException("Só é possível apagar a comunidade quando você for o único membro");
+        }
+        User soleMember = community.getMembers().iterator().next();
+        if (!soleMember.getId().equals(userId)) {
+            throw new IllegalArgumentException("Só é possível apagar a comunidade quando você for o único membro");
+        }
+
+        soleMember.getCommunities().remove(community);
+        userRepository.save(soleMember);
+
+        List<Ad> ads = adRepository.findByCommunity_Id(communityId);
+        for (Ad ad : ads) {
+            reportRepository.deleteByAd_Id(ad.getId());
+            recommendationReactionRepository.deleteByAd_Id(ad.getId());
+            recommendationCommentRepository.findByAd_Id(ad.getId()).forEach(comment ->
+                    commentLikeRepository.deleteByCommentId(comment.getId()));
+            recommendationCommentRepository.deleteByAd_Id(ad.getId());
+            adImageRepository.deleteByAdId(ad.getId());
+            storageService.deleteByPrefix("ads/" + ad.getId());
+            adRepository.delete(ad);
+        }
+
+        communityAdminRepository.deleteByCommunity_Id(communityId);
+        joinRequestRepository.deleteByCommunity_Id(communityId);
+        communityRepository.deleteById(communityId);
     }
 
     /**

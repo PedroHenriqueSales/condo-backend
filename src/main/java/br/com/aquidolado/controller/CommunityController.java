@@ -101,6 +101,14 @@ public class CommunityController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/{id}/admin/members/{memberId}")
+    @Operation(summary = "Remover membro", description = "Remove um membro da comunidade (apenas administrador). Não pode remover a si mesmo.")
+    public ResponseEntity<Void> removeMember(@PathVariable Long id, @PathVariable Long memberId) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        communityService.removeMember(id, memberId, userId);
+        return ResponseEntity.noContent().build();
+    }
+
     @DeleteMapping("/{id}/admin/me")
     @Operation(summary = "Deixar de ser administrador", description = "Remove o usuário atual dos administradores da comunidade, permanecendo como membro")
     public ResponseEntity<Void> leaveAdminRole(@PathVariable Long id) {
@@ -121,5 +129,13 @@ public class CommunityController {
     public ResponseEntity<CommunityResponse> regenerateAccessCode(@PathVariable Long id) {
         Long userId = SecurityUtil.getCurrentUserId();
         return ResponseEntity.ok(communityService.regenerateAccessCode(id, userId));
+    }
+
+    @DeleteMapping("/{id}/admin")
+    @Operation(summary = "Apagar comunidade", description = "Apaga a comunidade. Permitido somente quando o administrador for o único membro.")
+    public ResponseEntity<Void> deleteCommunity(@PathVariable Long id) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        communityService.deleteCommunity(id, userId);
+        return ResponseEntity.noContent().build();
     }
 }
