@@ -113,7 +113,9 @@ public class AuthService {
     @Transactional
     public void verifyEmail(String token) {
         log.info("✅ [AUTH] Verificando email");
-        User user = tokenService.validateVerificationToken(token);
+        User fromToken = tokenService.validateVerificationToken(token);
+        User user = userRepository.findById(fromToken.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
         user.setEmailVerified(true);
         userRepository.save(user);
         tokenService.deleteVerificationTokenForUser(user.getId());
