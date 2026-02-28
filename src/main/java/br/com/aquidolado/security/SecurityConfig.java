@@ -1,6 +1,7 @@
 package br.com.aquidolado.security;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+@Slf4j
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -71,14 +73,17 @@ public class SecurityConfig {
         List<String> patterns = new ArrayList<>();
 
         if (StringUtils.hasText(allowedOriginsCsv)) {
-            List<String> origins = Arrays.stream(allowedOriginsCsv.split(","))
+            // Aceita vírgula normal ou codificada (%2C) - algumas plataformas (ex.: Render) podem codificar
+            String normalized = allowedOriginsCsv.replace("%2C", ",");
+            List<String> origins = Arrays.stream(normalized.split(","))
                     .map(String::trim)
+                    .map(s -> s.endsWith("/") ? s.substring(0, s.length() - 1) : s)
                     .filter(s -> !s.isEmpty())
                     .toList();
-            
-            // Usa patterns para suportar wildcards (ex: URLs do Vercel)
-            // Adiciona padrão do Vercel automaticamente se detectar URL do Vercel
             patterns = new ArrayList<>(origins);
+            if (log.isInfoEnabled()) {
+                log.info("CORS allowed origins (from CORS_ALLOWED_ORIGINS): {}", origins);
+            }
             
             // Se houver alguma URL do Vercel, adiciona o padrão wildcard
             boolean hasVercelUrl = origins.stream().anyMatch(origin -> origin.contains(".vercel.app"));
@@ -133,14 +138,21 @@ public class SecurityConfig {
         // Origens extras (ex.: Origin exata do app no emulador, para depuração)
         if (StringUtils.hasText(extraOriginsCsv)) {
             List<String> finalPatterns = patterns;
-            Arrays.stream(extraOriginsCsv.split(","))
+            String extraNormalized = extraOriginsCsv.replace("%2C", ",");
+            Arrays.stream(extraNormalized.split(","))
                     .map(String::trim)
+                    .map(s -> s.endsWith("/") ? s.substring(0, s.length() - 1) : s)
                     .filter(s -> !s.isEmpty())
                     .forEach(origin -> {
                         if (!finalPatterns.contains(origin)) finalPatterns.add(origin);
                     });
         }
 
+        // Origens exatas (sem *) usam setAllowedOrigins para garantir o header Access-Control-Allow-Origin correto
+        List<String> exactOrigins = patterns.stream().filter(p -> !p.contains("*")).toList();
+        if (!exactOrigins.isEmpty()) {
+            cfg.setAllowedOrigins(exactOrigins);
+        }
         cfg.setAllowedOriginPatterns(patterns);
 
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
