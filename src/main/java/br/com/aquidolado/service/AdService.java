@@ -8,6 +8,7 @@ import br.com.aquidolado.domain.entity.User;
 import br.com.aquidolado.domain.enums.AdStatus;
 import br.com.aquidolado.domain.enums.AdType;
 import br.com.aquidolado.domain.enums.EventType;
+import br.com.aquidolado.dto.AdOgResponse;
 import br.com.aquidolado.dto.AdResponse;
 import br.com.aquidolado.dto.CreateAdRequest;
 import br.com.aquidolado.dto.UpdateAdRequest;
@@ -27,6 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -289,6 +291,32 @@ public class AdService {
                     .build();
             adImageRepository.save(img);
         }
+    }
+
+    /**
+     * Dados mínimos do anúncio para preview (Open Graph). Público, sem auth.
+     * Retorna vazio se o anúncio não existir ou estiver REMOVED.
+     */
+    @Transactional(readOnly = true)
+    public Optional<AdOgResponse> getOgData(Long adId) {
+        return adRepository.findById(adId)
+                .filter(ad -> ad.getStatus() != AdStatus.REMOVED)
+                .map(ad -> {
+                    String imagePath = null;
+                    if (ad.getType() != AdType.RECOMMENDATION) {
+                        List<AdImage> images = adImageRepository.findByAdIdOrderBySortOrder(ad.getId());
+                        if (!images.isEmpty()) {
+                            imagePath = images.get(0).getUrl();
+                            if (imagePath != null && !imagePath.startsWith("/")) {
+                                imagePath = "/" + imagePath;
+                            }
+                        }
+                    }
+                    return AdOgResponse.builder()
+                            .title(ad.getTitle())
+                            .imagePath(imagePath)
+                            .build();
+                });
     }
 
     private AdResponse toResponse(Ad ad, Long currentUserId) {
