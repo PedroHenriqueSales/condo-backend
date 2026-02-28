@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -18,6 +19,7 @@ import java.util.stream.Stream;
  * venha da aplicação mesmo quando há proxy/CDN (ex.: Cloudflare/Render) na frente.
  * Registrado com maior precedência em CorsFilterConfig.
  */
+@Slf4j
 public class CorsPreflightFilter extends OncePerRequestFilter {
 
     private static final String ACCESS_CONTROL_ALLOW_ORIGIN = "Access-Control-Allow-Origin";
@@ -64,6 +66,7 @@ public class CorsPreflightFilter extends OncePerRequestFilter {
         boolean originAllowed = StringUtils.hasText(origin) && allowedOrigins.contains(origin);
 
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            log.info("CORS preflight OPTIONS {} origin={} allowed={}", request.getRequestURI(), origin, originAllowed);
             if (originAllowed) {
                 response.setHeader(ACCESS_CONTROL_ALLOW_ORIGIN, origin);
                 response.setHeader(ACCESS_CONTROL_ALLOW_METHODS, ALLOWED_METHODS);
