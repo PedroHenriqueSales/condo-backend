@@ -81,8 +81,9 @@ app:
     verification-expiry-hours: 24
     reset-expiry-hours: 1
     # Opcional: API Key do SendGrid. Se definida, usa a API HTTP (porta 443) em vez de SMTP.
-    # Necessário no Render free tier, onde portas SMTP (587) são bloqueadas.
     sendgrid-api-key: ${SENDGRID_API_KEY:}
+    # Opcional: região AWS para SES via API (HTTPS). Se definida com AWS_ACCESS_KEY_ID/SECRET, usa API em vez de SMTP (evita porta 587 bloqueada).
+    aws-ses-region: ${AWS_SES_REGION:${AWS_REGION:}}
   storage:
     type: ${STORAGE_TYPE:local}  # local ou cloudinary
     local:

@@ -21,6 +21,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
 
+import software.amazon.awssdk.services.sesv2.SesV2Client;
+import software.amazon.awssdk.services.sesv2.model.Body;
+import software.amazon.awssdk.services.sesv2.model.Content;
+import software.amazon.awssdk.services.sesv2.model.Destination;
+import software.amazon.awssdk.services.sesv2.model.EmailContent;
+import software.amazon.awssdk.services.sesv2.model.Message;
+import software.amazon.awssdk.services.sesv2.model.SendEmailRequest;
+
 @Service
 @Slf4j
 public class EmailService {
@@ -49,18 +57,27 @@ public class EmailService {
     @Value("${app.email.sendgrid-api-key:}")
     private String sendgridApiKey;
 
+    @Value("${app.email.aws-ses-region:}")
+    private String awsSesRegion;
+
+    @Autowired(required = false)
+    @org.springframework.beans.factory.annotation.Qualifier("sesV2Client")
+    private SesV2Client sesV2Client;
+
     @Autowired(required = false)
     private Environment environment;
 
     /**
-     * Configurado quando há SMTP válido OU API Key do SendGrid (envio via HTTP, porta 443).
-     * SendGrid API é útil no Render free tier, onde portas SMTP são bloqueadas.
+     * Configurado quando há SMTP válido OU SendGrid API OU AWS SES API (ambos via HTTPS, porta 443).
      */
     public boolean isEmailConfigured() {
         if (!StringUtils.hasText(fromEmail) || !fromEmail.contains("@")) {
             return false;
         }
         if (StringUtils.hasText(sendgridApiKey)) {
+            return true;
+        }
+        if (useAwsSesApi()) {
             return true;
         }
         return mailSender != null 
@@ -70,6 +87,10 @@ public class EmailService {
 
     private boolean useSendGridApi() {
         return StringUtils.hasText(sendgridApiKey) && StringUtils.hasText(fromEmail) && fromEmail.contains("@");
+    }
+
+    private boolean useAwsSesApi() {
+        return sesV2Client != null && StringUtils.hasText(awsSesRegion) && StringUtils.hasText(fromEmail) && fromEmail.contains("@");
     }
 
     private boolean isDevProfile() {
@@ -127,6 +148,12 @@ public class EmailService {
             log.info("📧 [EMAIL] Modo de envio: SendGrid API (HTTPS). Enviando verificação para {}", user.getEmail());
             sendViaSendGridApi(user.getEmail(), user.getName(), "Confirme seu email - Aqui", buildVerificationEmailBody(user.getName(), verificationLink));
             log.info("📧 [EMAIL] Email de verificação enviado com sucesso para {} (SendGrid API)", user.getEmail());
+            return;
+        }
+        if (useAwsSesApi()) {
+            log.info("📧 [EMAIL] Modo de envio: AWS SES API (HTTPS). Enviando verificação para {}", user.getEmail());
+            sendViaAwsSesApi(user.getEmail(), "Confirme seu email - Aqui", buildVerificationEmailBody(user.getName(), verificationLink));
+            log.info("📧 [EMAIL] Email de verificação enviado com sucesso para {} (AWS SES API)", user.getEmail());
             return;
         }
         log.info("📧 [EMAIL] Modo de envio: SMTP. Enviando verificação para {}", user.getEmail());
@@ -188,6 +215,12 @@ public class EmailService {
             log.info("📧 [EMAIL] Email de redefinição de senha enviado com sucesso para {} (SendGrid API)", user.getEmail());
             return;
         }
+        if (useAwsSesApi()) {
+            log.info("📧 [EMAIL] Modo de envio: AWS SES API (HTTPS). Enviando reset de senha para {}", user.getEmail());
+            sendViaAwsSesApi(user.getEmail(), "Redefinição de senha - Aqui", buildPasswordResetEmailBody(user.getName(), resetLink));
+            log.info("📧 [EMAIL] Email de redefinição de senha enviado com sucesso para {} (AWS SES API)", user.getEmail());
+            return;
+        }
         log.info("📧 [EMAIL] Modo de envio: SMTP. Enviando reset de senha para {}", user.getEmail());
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -198,6 +231,31 @@ public class EmailService {
         helper.setText(html, true);
         mailSender.send(message);
         log.info("📧 [EMAIL] Email de redefinição de senha enviado com sucesso para {}", user.getEmail());
+    }
+
+    /**
+     * Envia email via API HTTPS do AWS SES (porta 443). Evita timeout quando a porta SMTP 587 está bloqueada.
+     * Requer AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY e AWS_SES_REGION (ou AWS_REGION).
+     */
+    private void sendViaAwsSesApi(String toEmail, String subject, String htmlContent) {
+        SendEmailRequest request = SendEmailRequest.builder()
+                .fromEmailAddress(fromEmail)
+                .destination(Destination.builder().toAddresses(toEmail).build())
+                .content(EmailContent.builder()
+                        .simple(Message.builder()
+                                .subject(Content.builder().data(subject).charset("UTF-8").build())
+                                .body(Body.builder()
+                                        .html(Content.builder().data(htmlContent).charset("UTF-8").build())
+                                        .build())
+                                .build())
+                        .build())
+                .build();
+        try {
+            sesV2Client.sendEmail(request);
+        } catch (Exception e) {
+            log.error("❌ [EMAIL] Falha na chamada à AWS SES API: {}", e.getMessage(), e);
+            throw new RuntimeException("Falha ao enviar email via AWS SES API: " + e.getMessage(), e);
+        }
     }
 
     /**
