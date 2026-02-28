@@ -19,6 +19,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executor;
 
 @Service
 @Slf4j
@@ -28,6 +29,10 @@ public class EmailService {
 
     @Autowired(required = false)
     private JavaMailSender mailSender;
+
+    @Autowired(required = false)
+    @org.springframework.beans.factory.annotation.Qualifier("emailExecutor")
+    private Executor emailExecutor;
 
     @Value("${spring.mail.host:}")
     private String smtpHost;
@@ -76,7 +81,9 @@ public class EmailService {
     }
 
     /**
-     * Envia email de verificação de conta. Em modo mock (SMTP não configurado), apenas loga o token.
+     * Envia email de verificação de conta (em background quando possível).
+     * Em modo mock (SMTP não configurado), apenas loga o token.
+     * O envio real é agendado em thread separada para evitar timeout da requisição HTTP (ex.: resend-verification).
      */
     public void sendVerificationEmail(User user, String token) {
         String verificationLink = frontendUrl + "/verify-email?token=" + token;
@@ -95,36 +102,47 @@ public class EmailService {
             log.error("❌ [EMAIL] EMAIL_FROM não configurado ou inválido. Configure a variável EMAIL_FROM com um email válido.");
             throw new IllegalStateException("EMAIL_FROM não está configurado. Configure a variável de ambiente EMAIL_FROM com um email válido.");
         }
+        Runnable send = () -> {
+            try {
+                doSendVerificationEmail(user, verificationLink);
+            } catch (Exception e) {
+                log.error("❌ [EMAIL] Falha ao enviar email de verificação em background para {}: {}", user.getEmail(), e.getMessage(), e);
+            }
+        };
+        if (emailExecutor != null) {
+            emailExecutor.execute(send);
+            log.info("📧 [EMAIL] Envio de verificação agendado em background para {}", user.getEmail());
+        } else {
+            try {
+                doSendVerificationEmail(user, verificationLink);
+            } catch (MessagingException e) {
+                log.error("❌ [EMAIL] Falha ao enviar email de verificação para {}: {}", user.getEmail(), e.getMessage(), e);
+                throw new RuntimeException("Não foi possível enviar o email de verificação", e);
+            }
+        }
+    }
 
+    private void doSendVerificationEmail(User user, String verificationLink) throws MessagingException {
         if (useSendGridApi()) {
             log.info("📧 [EMAIL] Modo de envio: SendGrid API (HTTPS). Enviando verificação para {}", user.getEmail());
             sendViaSendGridApi(user.getEmail(), user.getName(), "Confirme seu email - Aqui", buildVerificationEmailBody(user.getName(), verificationLink));
             log.info("📧 [EMAIL] Email de verificação enviado com sucesso para {} (SendGrid API)", user.getEmail());
             return;
         }
-
         log.info("📧 [EMAIL] Modo de envio: SMTP. Enviando verificação para {}", user.getEmail());
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setFrom(fromEmail);
-            helper.setTo(user.getEmail());
-            helper.setSubject("Confirme seu email - Aqui");
-            String html = buildVerificationEmailBody(user.getName(), verificationLink);
-            helper.setText(html, true);
-            mailSender.send(message);
-            log.info("📧 [EMAIL] Email de verificação enviado com sucesso para {}", user.getEmail());
-        } catch (jakarta.mail.internet.AddressException e) {
-            log.error("❌ [EMAIL] Email FROM inválido: {}. Verifique a variável EMAIL_FROM.", fromEmail);
-            throw new IllegalStateException("EMAIL_FROM inválido: " + fromEmail + ". Configure um email válido na variável de ambiente EMAIL_FROM.", e);
-        } catch (MessagingException e) {
-            log.error("❌ [EMAIL] Falha ao enviar email de verificação para {}: {}", user.getEmail(), e.getMessage(), e);
-            throw new RuntimeException("Não foi possível enviar o email de verificação", e);
-        }
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+        helper.setFrom(fromEmail);
+        helper.setTo(user.getEmail());
+        helper.setSubject("Confirme seu email - Aqui");
+        String html = buildVerificationEmailBody(user.getName(), verificationLink);
+        helper.setText(html, true);
+        mailSender.send(message);
+        log.info("📧 [EMAIL] Email de verificação enviado com sucesso para {}", user.getEmail());
     }
 
     /**
-     * Envia email de redefinição de senha. Em modo mock, apenas loga o token.
+     * Envia email de redefinição de senha (em background quando possível). Em modo mock, apenas loga o token.
      */
     public void sendPasswordResetEmail(User user, String token) {
         String resetLink = frontendUrl + "/reset-password?token=" + token;
@@ -143,32 +161,43 @@ public class EmailService {
             log.error("❌ [EMAIL] EMAIL_FROM não configurado ou inválido. Configure a variável EMAIL_FROM com um email válido.");
             throw new IllegalStateException("EMAIL_FROM não está configurado. Configure a variável de ambiente EMAIL_FROM com um email válido.");
         }
+        Runnable send = () -> {
+            try {
+                doSendPasswordResetEmail(user, resetLink);
+            } catch (Exception e) {
+                log.error("❌ [EMAIL] Falha ao enviar email de reset em background para {}: {}", user.getEmail(), e.getMessage(), e);
+            }
+        };
+        if (emailExecutor != null) {
+            emailExecutor.execute(send);
+            log.info("📧 [EMAIL] Envio de reset de senha agendado em background para {}", user.getEmail());
+        } else {
+            try {
+                doSendPasswordResetEmail(user, resetLink);
+            } catch (MessagingException e) {
+                log.error("❌ [EMAIL] Falha ao enviar email de reset para {}: {}", user.getEmail(), e.getMessage(), e);
+                throw new RuntimeException("Não foi possível enviar o email de redefinição de senha", e);
+            }
+        }
+    }
 
+    private void doSendPasswordResetEmail(User user, String resetLink) throws MessagingException {
         if (useSendGridApi()) {
             log.info("📧 [EMAIL] Modo de envio: SendGrid API (HTTPS). Enviando reset de senha para {}", user.getEmail());
             sendViaSendGridApi(user.getEmail(), user.getName(), "Redefinição de senha - Aqui", buildPasswordResetEmailBody(user.getName(), resetLink));
             log.info("📧 [EMAIL] Email de redefinição de senha enviado com sucesso para {} (SendGrid API)", user.getEmail());
             return;
         }
-
         log.info("📧 [EMAIL] Modo de envio: SMTP. Enviando reset de senha para {}", user.getEmail());
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setFrom(fromEmail);
-            helper.setTo(user.getEmail());
-            helper.setSubject("Redefinição de senha - Aqui");
-            String html = buildPasswordResetEmailBody(user.getName(), resetLink);
-            helper.setText(html, true);
-            mailSender.send(message);
-            log.info("📧 [EMAIL] Email de redefinição de senha enviado com sucesso para {}", user.getEmail());
-        } catch (jakarta.mail.internet.AddressException e) {
-            log.error("❌ [EMAIL] Email FROM inválido: {}. Verifique a variável EMAIL_FROM.", fromEmail);
-            throw new IllegalStateException("EMAIL_FROM inválido: " + fromEmail + ". Configure um email válido na variável de ambiente EMAIL_FROM.", e);
-        } catch (MessagingException e) {
-            log.error("❌ [EMAIL] Falha ao enviar email de reset para {}: {}", user.getEmail(), e.getMessage(), e);
-            throw new RuntimeException("Não foi possível enviar o email de redefinição de senha", e);
-        }
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+        helper.setFrom(fromEmail);
+        helper.setTo(user.getEmail());
+        helper.setSubject("Redefinição de senha - Aqui");
+        String html = buildPasswordResetEmailBody(user.getName(), resetLink);
+        helper.setText(html, true);
+        mailSender.send(message);
+        log.info("📧 [EMAIL] Email de redefinição de senha enviado com sucesso para {}", user.getEmail());
     }
 
     /**
