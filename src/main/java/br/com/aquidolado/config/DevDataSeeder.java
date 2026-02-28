@@ -37,12 +37,12 @@ public class DevDataSeeder implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
 
     @Override
+    @Transactional
     public void run(String... args) {
         seedIfNeeded();
     }
 
-    @Transactional
-    public void seedIfNeeded() {
+    private void seedIfNeeded() {
         // Se já existe o usuário seed, não recria
         User user = userRepository.findByEmail(SEED_EMAIL).orElse(null);
         if (user == null) {
