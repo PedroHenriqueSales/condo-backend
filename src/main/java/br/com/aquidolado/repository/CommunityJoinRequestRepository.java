@@ -11,7 +11,7 @@ public interface CommunityJoinRequestRepository extends JpaRepository<CommunityJ
 
     List<CommunityJoinRequest> findByCommunityIdAndStatus(Long communityId, JoinRequestStatus status);
 
-    boolean existsByCommunityIdAndUserIdAndStatus(Long communityId, Long userId, JoinRequestStatus status);
+    Optional<CommunityJoinRequest> findByCommunityIdAndUserId(Long communityId, Long userId);
 
     void deleteByUser_Id(Long userId);
 

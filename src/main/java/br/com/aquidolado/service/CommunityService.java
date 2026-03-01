@@ -94,10 +94,22 @@ public class CommunityService {
         }
 
         if (community.getIsPrivate()) {
-            if (joinRequestRepository.existsByCommunityIdAndUserIdAndStatus(community.getId(), userId, JoinRequestStatus.PENDING)) {
-                throw new IllegalArgumentException("Você já possui uma solicitação pendente para esta comunidade");
+            CommunityJoinRequest request = joinRequestRepository.findByCommunityIdAndUserId(community.getId(), userId)
+                    .orElse(null);
+            if (request != null) {
+                if (request.getStatus() == JoinRequestStatus.PENDING) {
+                    throw new IllegalArgumentException("Você já possui uma solicitação pendente para esta comunidade");
+                }
+                if (request.getStatus() == JoinRequestStatus.REJECTED) {
+                    request.setStatus(JoinRequestStatus.PENDING);
+                    request.setCreatedAt(Instant.now());
+                    joinRequestRepository.save(request);
+                    return toResponse(community, userId).toBuilder().joinPending(true).build();
+                }
+                // APPROVED: em teoria o usuário já é membro (check no início); mensagem consistente
+                throw new IllegalArgumentException("Você já é membro deste condomínio");
             }
-            CommunityJoinRequest request = CommunityJoinRequest.builder()
+            request = CommunityJoinRequest.builder()
                     .community(community)
                     .user(user)
                     .status(JoinRequestStatus.PENDING)
