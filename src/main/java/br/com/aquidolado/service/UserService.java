@@ -43,6 +43,7 @@ public class UserService {
                 .name(user.getName())
                 .whatsapp(user.getWhatsapp())
                 .address(user.getAddress())
+                .emailVerified(Boolean.TRUE.equals(user.getEmailVerified()))
                 .build();
     }
 
@@ -65,6 +66,7 @@ public class UserService {
                 .name(user.getName())
                 .whatsapp(user.getWhatsapp())
                 .address(user.getAddress())
+                .emailVerified(Boolean.TRUE.equals(user.getEmailVerified()))
                 .build();
     }
 
