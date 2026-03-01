@@ -1,5 +1,6 @@
 package br.com.aquidolado.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -12,6 +13,7 @@ public class CreateCommunityRequest {
     @Size(max = 255)
     private String name;
 
+    @JsonProperty("isPrivate")
     private boolean isPrivate;
 
     @NotBlank(message = "CEP é obrigatório")

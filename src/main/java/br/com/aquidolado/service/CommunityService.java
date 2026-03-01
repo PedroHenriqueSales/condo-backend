@@ -279,6 +279,12 @@ public class CommunityService {
         Community community = communityRepository.findById(communityId)
                 .orElseThrow(() -> new IllegalArgumentException("Condomínio não encontrado"));
         community.setName(request.getName().trim());
+        if (request.getIsPrivate() != null) {
+            community.setIsPrivate(request.getIsPrivate());
+        }
+        if (request.getPostalCode() != null && !request.getPostalCode().isBlank()) {
+            community.setPostalCode(normalizePostalCode(request.getPostalCode()));
+        }
         communityRepository.save(community);
         Community withDetails = communityRepository.findByIdWithCreatedByAndMembers(communityId).orElse(community);
         return toResponseWithDetails(withDetails, userId);
