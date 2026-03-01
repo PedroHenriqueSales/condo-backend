@@ -306,8 +306,9 @@ public class AdService {
                     if (ad.getType() != AdType.RECOMMENDATION) {
                         List<AdImage> images = adImageRepository.findByAdIdOrderBySortOrder(ad.getId());
                         if (!images.isEmpty()) {
-                            imagePath = images.get(0).getUrl();
-                            if (imagePath != null && !imagePath.startsWith("/")) {
+                            imagePath = images.getFirst().getUrl();
+                            // Só adiciona "/" para path relativo (ex.: /uploads/...). URL absoluta (Cloudinary) deve ser retornada como está.
+                            if (imagePath != null && !imagePath.startsWith("/") && !imagePath.startsWith("http://") && !imagePath.startsWith("https://")) {
                                 imagePath = "/" + imagePath;
                             }
                         }
