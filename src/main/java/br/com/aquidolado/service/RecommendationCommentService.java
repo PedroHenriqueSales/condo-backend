@@ -31,9 +31,6 @@ public class RecommendationCommentService {
     public Page<CommentResponse> getComments(Long adId, Long currentUserId, Pageable pageable) {
         Ad ad = adRepository.findById(adId)
                 .orElseThrow(() -> new IllegalArgumentException("Anúncio não encontrado"));
-        if (ad.getType() != br.com.aquidolado.domain.enums.AdType.RECOMMENDATION) {
-            throw new IllegalArgumentException("Comentários só são permitidos em indicações");
-        }
         if (!userRepository.existsByIdAndCommunitiesId(currentUserId, ad.getCommunity().getId())) {
             throw new IllegalArgumentException("Você não tem acesso a esta comunidade");
         }
@@ -45,9 +42,6 @@ public class RecommendationCommentService {
     public CommentResponse createComment(Long adId, Long userId, CreateCommentRequest request) {
         Ad ad = adRepository.findById(adId)
                 .orElseThrow(() -> new IllegalArgumentException("Anúncio não encontrado"));
-        if (ad.getType() != br.com.aquidolado.domain.enums.AdType.RECOMMENDATION) {
-            throw new IllegalArgumentException("Comentários só são permitidos em indicações");
-        }
         if (!userRepository.existsByIdAndCommunitiesId(userId, ad.getCommunity().getId())) {
             throw new IllegalArgumentException("Você não tem acesso a esta comunidade");
         }
@@ -66,16 +60,13 @@ public class RecommendationCommentService {
     public void toggleCommentLike(Long adId, Long commentId, Long userId) {
         Ad ad = adRepository.findById(adId)
                 .orElseThrow(() -> new IllegalArgumentException("Anúncio não encontrado"));
-        if (ad.getType() != br.com.aquidolado.domain.enums.AdType.RECOMMENDATION) {
-            throw new IllegalArgumentException("Curtir comentário só é permitido em indicações");
-        }
         if (!userRepository.existsByIdAndCommunitiesId(userId, ad.getCommunity().getId())) {
             throw new IllegalArgumentException("Você não tem acesso a esta comunidade");
         }
         RecommendationComment comment = recommendationCommentRepository.findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("Comentário não encontrado"));
         if (!comment.getAd().getId().equals(adId)) {
-            throw new IllegalArgumentException("Comentário não pertence a esta indicação");
+            throw new IllegalArgumentException("Comentário não pertence a este anúncio");
         }
         if (comment.getUser().getId().equals(userId)) {
             throw new IllegalArgumentException("Você não pode curtir seu próprio comentário");
@@ -95,16 +86,13 @@ public class RecommendationCommentService {
     public void deleteComment(Long adId, Long commentId, Long userId) {
         Ad ad = adRepository.findById(adId)
                 .orElseThrow(() -> new IllegalArgumentException("Anúncio não encontrado"));
-        if (ad.getType() != br.com.aquidolado.domain.enums.AdType.RECOMMENDATION) {
-            throw new IllegalArgumentException("Comentários só existem em indicações");
-        }
         if (!userRepository.existsByIdAndCommunitiesId(userId, ad.getCommunity().getId())) {
             throw new IllegalArgumentException("Você não tem acesso a esta comunidade");
         }
         RecommendationComment comment = recommendationCommentRepository.findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("Comentário não encontrado"));
         if (!comment.getAd().getId().equals(adId)) {
-            throw new IllegalArgumentException("Comentário não pertence a esta indicação");
+            throw new IllegalArgumentException("Comentário não pertence a este anúncio");
         }
         if (!comment.getUser().getId().equals(userId)) {
             throw new IllegalArgumentException("Somente quem publicou pode apagar o comentário");
