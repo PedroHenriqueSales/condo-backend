@@ -26,6 +26,7 @@ public class RecommendationCommentService {
     private final RecommendationCommentRepository recommendationCommentRepository;
     private final CommentLikeRepository commentLikeRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public Page<CommentResponse> getComments(Long adId, Long currentUserId, Pageable pageable) {
@@ -53,6 +54,7 @@ public class RecommendationCommentService {
                 .createdAt(Instant.now())
                 .build();
         comment = recommendationCommentRepository.save(comment);
+        notificationService.notifyCommentCreated(comment);
         return toCommentResponse(comment, userId);
     }
 

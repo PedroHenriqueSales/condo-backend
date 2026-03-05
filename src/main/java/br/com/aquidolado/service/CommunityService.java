@@ -50,6 +50,7 @@ public class CommunityService {
     private final CommentLikeRepository commentLikeRepository;
     private final AdImageRepository adImageRepository;
     private final StorageService storageService;
+    private final NotificationService notificationService;
 
     @Transactional
     public CommunityResponse create(Long userId, CreateCommunityRequest request) {
@@ -103,7 +104,8 @@ public class CommunityService {
                 if (request.getStatus() == JoinRequestStatus.REJECTED) {
                     request.setStatus(JoinRequestStatus.PENDING);
                     request.setCreatedAt(Instant.now());
-                    joinRequestRepository.save(request);
+                    request = joinRequestRepository.save(request);
+                    notificationService.notifyCommunityJoinRequest(request);
                     return toResponse(community, userId).toBuilder().joinPending(true).build();
                 }
                 // APPROVED: em teoria o usuário já é membro (check no início); mensagem consistente
@@ -115,7 +117,8 @@ public class CommunityService {
                     .status(JoinRequestStatus.PENDING)
                     .createdAt(Instant.now())
                     .build();
-            joinRequestRepository.save(request);
+            request = joinRequestRepository.save(request);
+            notificationService.notifyCommunityJoinRequest(request);
             return toResponse(community, userId).toBuilder().joinPending(true).build();
         }
 

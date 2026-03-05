@@ -25,6 +25,7 @@ public class ReportService {
     private final AdRepository adRepository;
     private final UserRepository userRepository;
     private final EventLogService eventLogService;
+    private final NotificationService notificationService;
 
     @Value("${app.reports.suspend-threshold:2}")
     private int suspendThreshold;
@@ -55,8 +56,9 @@ public class ReportService {
                 .createdAt(Instant.now())
                 .build();
 
-        reportRepository.save(report);
+        report = reportRepository.save(report);
         eventLogService.log(EventType.REPORT_AD, userId, ad.getCommunity().getId());
+        notificationService.notifyReportCreated(report);
 
         long distinctReporters = reportRepository.countDistinctReporterUserIdsByAdId(ad.getId());
 
