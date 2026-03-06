@@ -1,5 +1,6 @@
 package br.com.aquidolado.service;
 
+import br.com.aquidolado.domain.entity.AccessCodeRequest;
 import br.com.aquidolado.domain.entity.Ad;
 import br.com.aquidolado.domain.entity.Community;
 import br.com.aquidolado.domain.entity.CommunityAdmin;
@@ -165,6 +166,8 @@ public class NotificationService {
 
     private NotificationResponse toNotificationResponse(Notification n) {
         Community community = n.getCommunity();
+        String accessCode = (n.getType() == NotificationType.ACCESS_CODE_GRANTED && community != null)
+                ? community.getAccessCode() : null;
         return NotificationResponse.builder()
                 .id(n.getId())
                 .type(n.getType())
@@ -175,6 +178,7 @@ public class NotificationService {
                 .communityName(community != null ? community.getName() : null)
                 .joinRequestId(n.getJoinRequest() != null ? n.getJoinRequest().getId() : null)
                 .reportId(n.getReport() != null ? n.getReport().getId() : null)
+                .accessCode(accessCode)
                 .createdAt(n.getCreatedAt())
                 .readAt(n.getReadAt())
                 .build();
@@ -278,6 +282,44 @@ public class NotificationService {
                 .createdAt(Instant.now())
                 .build();
 
+        notificationRepository.save(notification);
+    }
+
+    @Transactional
+    public void notifyAccessCodeRequest(AccessCodeRequest request) {
+        Community community = request.getCommunity();
+        User requester = request.getUser();
+
+        Instant now = Instant.now();
+
+        List<CommunityAdmin> admins = communityAdminRepository.findByCommunity_Id(community.getId());
+        for (CommunityAdmin admin : admins) {
+            User adminUser = admin.getUser();
+            if (adminUser == null) {
+                continue;
+            }
+            Notification notification = Notification.builder()
+                    .user(adminUser)
+                    .type(NotificationType.ACCESS_CODE_REQUEST)
+                    .title("Solicitação de código de acesso")
+                    .body(requester.getName() + " solicitou o código de acesso da comunidade \"" + community.getName() + "\"")
+                    .community(community)
+                    .createdAt(now)
+                    .build();
+            notificationRepository.save(notification);
+        }
+    }
+
+    @Transactional
+    public void notifyAccessCodeGranted(User user, Community community) {
+        Notification notification = Notification.builder()
+                .user(user)
+                .type(NotificationType.ACCESS_CODE_GRANTED)
+                .title("Pedido aceito")
+                .body("Seu pedido foi aceito. Toque para usar o código e entrar na comunidade \"" + community.getName() + "\".")
+                .community(community)
+                .createdAt(Instant.now())
+                .build();
         notificationRepository.save(notification);
     }
 }

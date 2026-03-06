@@ -1,10 +1,12 @@
 package br.com.aquidolado.controller;
 
+import br.com.aquidolado.dto.AccessCodeRequestResponse;
 import br.com.aquidolado.dto.CommunityResponse;
 import br.com.aquidolado.dto.CreateCommunityRequest;
 import br.com.aquidolado.dto.JoinCommunityRequest;
 import br.com.aquidolado.dto.JoinRequestResponse;
 import br.com.aquidolado.dto.AddAdminRequest;
+import br.com.aquidolado.dto.NearbyCommunityResponse;
 import br.com.aquidolado.dto.UpdateCommunityRequest;
 import br.com.aquidolado.service.CommunityService;
 import br.com.aquidolado.util.SecurityUtil;
@@ -55,6 +57,21 @@ public class CommunityController {
         return ResponseEntity.ok(communityService.listAdminCommunities(userId));
     }
 
+    @GetMapping("/nearby")
+    @Operation(summary = "Comunidades próximas", description = "Lista comunidades públicas próximas ao CEP informado (exclui as que o usuário já participa)")
+    public ResponseEntity<List<NearbyCommunityResponse>> listNearby(@RequestParam String cep) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        return ResponseEntity.ok(communityService.listNearby(userId, cep));
+    }
+
+    @PostMapping("/{id}/request-access-code")
+    @Operation(summary = "Solicitar código de acesso", description = "Solicita o código de acesso de uma comunidade pública (administradores serão notificados)")
+    public ResponseEntity<Void> requestAccessCode(@PathVariable Long id) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        communityService.requestAccessCode(userId, id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Detalhes do condomínio", description = "Retorna os detalhes de um condomínio específico")
     public ResponseEntity<CommunityResponse> getById(@PathVariable Long id) {
@@ -75,6 +92,29 @@ public class CommunityController {
     public ResponseEntity<List<JoinRequestResponse>> getPendingRequests(@PathVariable Long id) {
         Long userId = SecurityUtil.getCurrentUserId();
         return ResponseEntity.ok(communityService.getPendingRequests(id, userId));
+    }
+
+    @GetMapping("/{id}/admin/access-code-requests")
+    @Operation(summary = "Solicitações de código", description = "Lista solicitações de exibição do código de acesso pendentes (apenas administrador)")
+    public ResponseEntity<List<AccessCodeRequestResponse>> getAccessCodeRequests(@PathVariable Long id) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        return ResponseEntity.ok(communityService.getAccessCodeRequests(id, userId));
+    }
+
+    @PostMapping("/{id}/admin/access-code-requests/{requestId}/approve")
+    @Operation(summary = "Aceitar solicitação de código", description = "Aceita e notifica o usuário com o código de acesso (apenas administrador)")
+    public ResponseEntity<Void> approveAccessCodeRequest(@PathVariable Long id, @PathVariable Long requestId) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        communityService.approveAccessCodeRequest(id, requestId, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/admin/access-code-requests/{requestId}/reject")
+    @Operation(summary = "Recusar solicitação de código", description = "Recusa a solicitação de exibição do código (apenas administrador)")
+    public ResponseEntity<Void> rejectAccessCodeRequest(@PathVariable Long id, @PathVariable Long requestId) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        communityService.rejectAccessCodeRequest(id, requestId, userId);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/admin/requests/{requestId}/approve")

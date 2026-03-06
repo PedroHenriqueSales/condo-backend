@@ -18,6 +18,7 @@ public class NotificationResponse {
     String communityName;
     Long joinRequestId;
     Long reportId;
+    String accessCode;
     Instant createdAt;
     Instant readAt;
 }

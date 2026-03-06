@@ -1,16 +1,21 @@
 package br.com.aquidolado.service;
 
+import br.com.aquidolado.domain.entity.AccessCodeRequest;
 import br.com.aquidolado.domain.entity.Ad;
 import br.com.aquidolado.domain.entity.Community;
 import br.com.aquidolado.domain.entity.CommunityAdmin;
 import br.com.aquidolado.domain.entity.CommunityJoinRequest;
 import br.com.aquidolado.domain.entity.User;
+import br.com.aquidolado.domain.enums.AccessCodeRequestStatus;
 import br.com.aquidolado.domain.enums.JoinRequestStatus;
+import br.com.aquidolado.dto.AccessCodeRequestResponse;
 import br.com.aquidolado.dto.CommunityResponse;
 import br.com.aquidolado.dto.CreateCommunityRequest;
 import br.com.aquidolado.dto.JoinRequestResponse;
 import br.com.aquidolado.dto.MemberSummary;
+import br.com.aquidolado.dto.NearbyCommunityResponse;
 import br.com.aquidolado.dto.UpdateCommunityRequest;
+import br.com.aquidolado.repository.AccessCodeRequestRepository;
 import br.com.aquidolado.repository.AdImageRepository;
 import br.com.aquidolado.repository.AdRepository;
 import br.com.aquidolado.repository.CommentLikeRepository;
@@ -31,6 +36,7 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -43,6 +49,7 @@ public class CommunityService {
     private final UserRepository userRepository;
     private final CommunityAdminRepository communityAdminRepository;
     private final CommunityJoinRequestRepository joinRequestRepository;
+    private final AccessCodeRequestRepository accessCodeRequestRepository;
     private final AdRepository adRepository;
     private final ReportRepository reportRepository;
     private final RecommendationReactionRepository recommendationReactionRepository;
@@ -125,6 +132,130 @@ public class CommunityService {
         user.getCommunities().add(community);
         userRepository.save(user);
         return toResponse(community, userId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<NearbyCommunityResponse> listNearby(Long userId, String cep) {
+        String normalizedCep = normalizePostalCode(cep);
+        if (normalizedCep == null || normalizedCep.length() < 5) {
+            return List.of();
+        }
+        if (normalizedCep.length() < 8) {
+            normalizedCep = String.format("%-8s", normalizedCep).replace(' ', '0');
+        } else if (normalizedCep.length() > 8) {
+            normalizedCep = normalizedCep.substring(0, 8);
+        }
+
+        List<Community> publicCommunities = communityRepository.findByIsPrivate(false);
+        Stream<Community> stream = publicCommunities.stream()
+                .filter(c -> !userRepository.existsByIdAndCommunitiesId(userId, c.getId()));
+
+        final String userCep = normalizedCep;
+        return stream
+                .sorted(Comparator
+                        .comparingLong((Community c) -> cepDistance(userCep, normalizePostalCode(c.getPostalCode())))
+                        .thenComparing(Community::getName))
+                .map(c -> NearbyCommunityResponse.builder()
+                        .id(c.getId())
+                        .name(c.getName())
+                        .postalCode(c.getPostalCode())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    private static long cepDistance(String cep1, String cep2) {
+        if (cep2 == null || cep2.length() < 5) return Long.MAX_VALUE;
+        if (cep2.length() < 8) cep2 = String.format("%-8s", cep2).replace(' ', '0');
+        if (cep2.length() > 8) cep2 = cep2.substring(0, 8);
+        try {
+            int prefix1 = Integer.parseInt(cep1.substring(0, 5));
+            int prefix2 = Integer.parseInt(cep2.substring(0, 5));
+            int suffix1 = cep1.length() >= 8 ? Integer.parseInt(cep1.substring(5, 8)) : 0;
+            int suffix2 = cep2.length() >= 8 ? Integer.parseInt(cep2.substring(5, 8)) : 0;
+            return Math.abs(prefix1 - prefix2) * 1000L + Math.abs(suffix1 - suffix2);
+        } catch (NumberFormatException e) {
+            return Long.MAX_VALUE;
+        }
+    }
+
+    @Transactional
+    public void requestAccessCode(Long userId, Long communityId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        Community community = communityRepository.findById(communityId)
+                .orElseThrow(() -> new IllegalArgumentException("Comunidade não encontrada"));
+        if (Boolean.TRUE.equals(community.getIsPrivate())) {
+            throw new IllegalArgumentException("Solicitação de código disponível apenas para comunidades públicas");
+        }
+        if (userRepository.existsByIdAndCommunitiesId(userId, communityId)) {
+            throw new IllegalArgumentException("Você já é membro desta comunidade");
+        }
+        if (accessCodeRequestRepository.existsByCommunityIdAndUserIdAndStatus(communityId, userId, AccessCodeRequestStatus.PENDING)) {
+            throw new IllegalArgumentException("Você já possui uma solicitação pendente para o código desta comunidade");
+        }
+        AccessCodeRequest existing = accessCodeRequestRepository.findByCommunityIdAndUserId(communityId, userId).orElse(null);
+        AccessCodeRequest request;
+        if (existing != null) {
+            existing.setStatus(AccessCodeRequestStatus.PENDING);
+            existing.setCreatedAt(Instant.now());
+            request = accessCodeRequestRepository.save(existing);
+        } else {
+            request = AccessCodeRequest.builder()
+                    .community(community)
+                    .user(user)
+                    .status(AccessCodeRequestStatus.PENDING)
+                    .createdAt(Instant.now())
+                    .build();
+            request = accessCodeRequestRepository.save(request);
+        }
+        notificationService.notifyAccessCodeRequest(request);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AccessCodeRequestResponse> getAccessCodeRequests(Long communityId, Long userId) {
+        requireAdmin(communityId, userId);
+        return accessCodeRequestRepository.findByCommunityIdAndStatus(communityId, AccessCodeRequestStatus.PENDING).stream()
+                .map(r -> AccessCodeRequestResponse.builder()
+                        .id(r.getId())
+                        .userId(r.getUser().getId())
+                        .userName(r.getUser().getName())
+                        .status(r.getStatus())
+                        .createdAt(r.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void approveAccessCodeRequest(Long communityId, Long requestId, Long userId) {
+        requireAdmin(communityId, userId);
+        AccessCodeRequest request = accessCodeRequestRepository.findById(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Solicitação não encontrada"));
+        if (!request.getCommunity().getId().equals(communityId)) {
+            throw new IllegalArgumentException("Solicitação não pertence a esta comunidade");
+        }
+        if (request.getStatus() != AccessCodeRequestStatus.PENDING) {
+            throw new IllegalArgumentException("Solicitação já foi processada");
+        }
+        request.setStatus(AccessCodeRequestStatus.APPROVED);
+        accessCodeRequestRepository.save(request);
+        Community community = request.getCommunity();
+        User targetUser = request.getUser();
+        notificationService.notifyAccessCodeGranted(targetUser, community);
+    }
+
+    @Transactional
+    public void rejectAccessCodeRequest(Long communityId, Long requestId, Long userId) {
+        requireAdmin(communityId, userId);
+        AccessCodeRequest request = accessCodeRequestRepository.findById(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Solicitação não encontrada"));
+        if (!request.getCommunity().getId().equals(communityId)) {
+            throw new IllegalArgumentException("Solicitação não pertence a esta comunidade");
+        }
+        if (request.getStatus() != AccessCodeRequestStatus.PENDING) {
+            throw new IllegalArgumentException("Solicitação já foi processada");
+        }
+        request.setStatus(AccessCodeRequestStatus.REJECTED);
+        accessCodeRequestRepository.save(request);
     }
 
     @Transactional(readOnly = true)
