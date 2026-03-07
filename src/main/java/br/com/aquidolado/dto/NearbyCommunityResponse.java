@@ -13,5 +13,8 @@ public class NearbyCommunityResponse {
 
     private Long id;
     private String name;
-    private String postalCode;
+    private Double latitude;
+    private Double longitude;
+    /** Distância em km do ponto de busca (preenchido na listagem por proximidade). */
+    private Double distanceKm;
 }

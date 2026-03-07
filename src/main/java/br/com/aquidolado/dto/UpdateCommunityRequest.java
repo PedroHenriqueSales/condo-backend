@@ -1,8 +1,9 @@
 package br.com.aquidolado.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -16,7 +17,11 @@ public class UpdateCommunityRequest {
     @JsonProperty("isPrivate")
     private Boolean isPrivate;
 
-    @Size(min = 8, max = 10)
-    @Pattern(regexp = "^[0-9]{8}$|^[0-9]{5}-[0-9]{3}$", message = "CEP deve ter 8 dígitos (ex.: 12345678 ou 12345-678)")
-    private String postalCode;
+    @DecimalMin(value = "-90", message = "Latitude deve estar entre -90 e 90")
+    @DecimalMax(value = "90", message = "Latitude deve estar entre -90 e 90")
+    private Double latitude;
+
+    @DecimalMin(value = "-180", message = "Longitude deve estar entre -180 e 180")
+    @DecimalMax(value = "180", message = "Longitude deve estar entre -180 e 180")
+    private Double longitude;
 }

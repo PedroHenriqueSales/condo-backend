@@ -19,6 +19,8 @@ public class CommunityResponse {
     private String accessCode;
     private Boolean isPrivate;
     private String postalCode;
+    private Double latitude;
+    private Double longitude;
     private Instant createdAt;
     private Long createdById;
     /** Preenchido apenas no detalhe (GET /communities/{id}) */

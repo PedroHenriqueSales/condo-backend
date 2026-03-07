@@ -30,8 +30,14 @@ public class Community {
     @Builder.Default
     private Boolean isPrivate = false;
 
-    @Column(name = "postal_code", nullable = false, length = 10)
+    @Column(name = "postal_code", length = 10)
     private String postalCode;
+
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;

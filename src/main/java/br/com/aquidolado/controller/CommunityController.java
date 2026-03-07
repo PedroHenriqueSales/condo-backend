@@ -58,10 +58,13 @@ public class CommunityController {
     }
 
     @GetMapping("/nearby")
-    @Operation(summary = "Comunidades próximas", description = "Lista comunidades públicas próximas ao CEP informado (exclui as que o usuário já participa)")
-    public ResponseEntity<List<NearbyCommunityResponse>> listNearby(@RequestParam String cep) {
+    @Operation(summary = "Comunidades próximas", description = "Lista comunidades públicas dentro do raio em km (exclui as que o usuário já participa)")
+    public ResponseEntity<List<NearbyCommunityResponse>> listNearby(
+            @RequestParam double lat,
+            @RequestParam double lng,
+            @RequestParam(defaultValue = "5") int radiusKm) {
         Long userId = SecurityUtil.getCurrentUserId();
-        return ResponseEntity.ok(communityService.listNearby(userId, cep));
+        return ResponseEntity.ok(communityService.listNearby(userId, lat, lng, radiusKm));
     }
 
     @PostMapping("/{id}/request-access-code")

@@ -36,7 +36,6 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -65,13 +64,13 @@ public class CommunityService {
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
 
         String accessCode = generateAccessCode();
-        String postalCode = normalizePostalCode(request.getPostalCode());
 
         Community community = Community.builder()
                 .name(request.getName())
                 .accessCode(accessCode)
                 .isPrivate(request.isPrivate())
-                .postalCode(postalCode)
+                .latitude(request.getLatitude())
+                .longitude(request.getLongitude())
                 .createdAt(Instant.now())
                 .createdBy(user)
                 .build();
@@ -134,48 +133,49 @@ public class CommunityService {
         return toResponse(community, userId);
     }
 
+    private static final int NEARBY_RADIUS_KM_MIN = 1;
+    private static final int NEARBY_RADIUS_KM_MAX = 15;
+
     @Transactional(readOnly = true)
-    public List<NearbyCommunityResponse> listNearby(Long userId, String cep) {
-        String normalizedCep = normalizePostalCode(cep);
-        if (normalizedCep == null || normalizedCep.length() < 5) {
-            return List.of();
-        }
-        if (normalizedCep.length() < 8) {
-            normalizedCep = String.format("%-8s", normalizedCep).replace(' ', '0');
-        } else if (normalizedCep.length() > 8) {
-            normalizedCep = normalizedCep.substring(0, 8);
+    public List<NearbyCommunityResponse> listNearby(Long userId, double latitude, double longitude, int radiusKm) {
+        if (radiusKm < NEARBY_RADIUS_KM_MIN || radiusKm > NEARBY_RADIUS_KM_MAX) {
+            throw new IllegalArgumentException("Raio deve estar entre " + NEARBY_RADIUS_KM_MIN + " e " + NEARBY_RADIUS_KM_MAX + " km");
         }
 
         List<Community> publicCommunities = communityRepository.findByIsPrivate(false);
-        Stream<Community> stream = publicCommunities.stream()
-                .filter(c -> !userRepository.existsByIdAndCommunitiesId(userId, c.getId()));
-
-        final String userCep = normalizedCep;
-        return stream
-                .sorted(Comparator
-                        .comparingLong((Community c) -> cepDistance(userCep, normalizePostalCode(c.getPostalCode())))
-                        .thenComparing(Community::getName))
-                .map(c -> NearbyCommunityResponse.builder()
-                        .id(c.getId())
-                        .name(c.getName())
-                        .postalCode(c.getPostalCode())
-                        .build())
+        return publicCommunities.stream()
+                .filter(c -> c.getLatitude() != null && c.getLongitude() != null)
+                .filter(c -> !userRepository.existsByIdAndCommunitiesId(userId, c.getId()))
+                .map(c -> {
+                    double distanceKm = haversineKm(latitude, longitude, c.getLatitude(), c.getLongitude());
+                    return new Object[] { c, distanceKm };
+                })
+                .filter(pair -> (Double) pair[1] <= radiusKm)
+                .sorted(Comparator.comparingDouble(pair -> (Double) pair[1]))
+                .map(pair -> {
+                    Community c = (Community) pair[0];
+                    double distanceKm = (Double) pair[1];
+                    return NearbyCommunityResponse.builder()
+                            .id(c.getId())
+                            .name(c.getName())
+                            .latitude(c.getLatitude())
+                            .longitude(c.getLongitude())
+                            .distanceKm(distanceKm)
+                            .build();
+                })
                 .collect(Collectors.toList());
     }
 
-    private static long cepDistance(String cep1, String cep2) {
-        if (cep2 == null || cep2.length() < 5) return Long.MAX_VALUE;
-        if (cep2.length() < 8) cep2 = String.format("%-8s", cep2).replace(' ', '0');
-        if (cep2.length() > 8) cep2 = cep2.substring(0, 8);
-        try {
-            int prefix1 = Integer.parseInt(cep1.substring(0, 5));
-            int prefix2 = Integer.parseInt(cep2.substring(0, 5));
-            int suffix1 = cep1.length() >= 8 ? Integer.parseInt(cep1.substring(5, 8)) : 0;
-            int suffix2 = cep2.length() >= 8 ? Integer.parseInt(cep2.substring(5, 8)) : 0;
-            return Math.abs(prefix1 - prefix2) * 1000L + Math.abs(suffix1 - suffix2);
-        } catch (NumberFormatException e) {
-            return Long.MAX_VALUE;
-        }
+    /** Distância em km entre dois pontos (fórmula de Haversine). */
+    private static double haversineKm(double lat1, double lon1, double lat2, double lon2) {
+        final double R = 6371; // raio da Terra em km
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
     }
 
     @Transactional
@@ -428,8 +428,9 @@ public class CommunityService {
         if (request.getIsPrivate() != null) {
             community.setIsPrivate(request.getIsPrivate());
         }
-        if (request.getPostalCode() != null && !request.getPostalCode().isBlank()) {
-            community.setPostalCode(normalizePostalCode(request.getPostalCode()));
+        if (request.getLatitude() != null && request.getLongitude() != null) {
+            community.setLatitude(request.getLatitude());
+            community.setLongitude(request.getLongitude());
         }
         communityRepository.save(community);
         Community withDetails = communityRepository.findByIdWithCreatedByAndMembers(communityId).orElse(community);
@@ -533,11 +534,6 @@ public class CommunityService {
         return sb.toString();
     }
 
-    private static String normalizePostalCode(String postalCode) {
-        if (postalCode == null) return null;
-        return postalCode.replaceAll("\\D", "");
-    }
-
     private CommunityResponse toResponse(Community c, Long currentUserId) {
         boolean isAdmin = currentUserId != null && communityAdminRepository.existsByCommunity_IdAndUser_Id(c.getId(), currentUserId);
         return CommunityResponse.builder()
@@ -546,6 +542,8 @@ public class CommunityService {
                 .accessCode(c.getAccessCode())
                 .isPrivate(c.getIsPrivate())
                 .postalCode(c.getPostalCode())
+                .latitude(c.getLatitude())
+                .longitude(c.getLongitude())
                 .createdAt(c.getCreatedAt())
                 .createdById(c.getCreatedBy().getId())
                 .isAdmin(isAdmin)
@@ -575,6 +573,8 @@ public class CommunityService {
                 .accessCode(c.getAccessCode())
                 .isPrivate(c.getIsPrivate())
                 .postalCode(c.getPostalCode())
+                .latitude(c.getLatitude())
+                .longitude(c.getLongitude())
                 .createdAt(c.getCreatedAt())
                 .createdById(c.getCreatedBy().getId())
                 .createdByName(c.getCreatedBy().getName())
