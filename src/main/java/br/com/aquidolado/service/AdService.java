@@ -306,9 +306,13 @@ public class AdService {
                     List<AdImage> images = adImageRepository.findByAdIdOrderBySortOrder(ad.getId());
                     if (!images.isEmpty()) {
                         imagePath = images.getFirst().getUrl();
-                        // Só adiciona "/" para path relativo (ex.: /uploads/...). URL absoluta (Cloudinary) deve ser retornada como está.
+                        // Path relativo: prefixa com /
                         if (imagePath != null && !imagePath.startsWith("/") && !imagePath.startsWith("http://") && !imagePath.startsWith("https://")) {
                             imagePath = "/" + imagePath;
+                        }
+                        // Cloudinary: usa transformação 1200x630 para OG (WhatsApp/Facebook exibem melhor)
+                        if (imagePath != null && imagePath.contains("res.cloudinary.com") && imagePath.contains("/upload/")) {
+                            imagePath = imagePath.replace("/upload/", "/upload/w_1200,h_630,c_fill,f_auto,q_auto/");
                         }
                     }
                     return AdOgResponse.builder()
