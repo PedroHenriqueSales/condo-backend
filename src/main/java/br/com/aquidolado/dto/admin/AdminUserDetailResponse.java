@@ -1,22 +1,26 @@
-package br.com.aquidolado.dto;
+package br.com.aquidolado.dto.admin;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserProfileResponse {
+public class AdminUserDetailResponse {
 
     private Long id;
-    private String email;
     private String name;
+    private String email;
     private String whatsapp;
-    private String address;
+    private Boolean active;
     private Boolean emailVerified;
-    /** Indica se o usuário é administrador do sistema (acesso ao painel /admin). */
     private Boolean systemAdmin;
+    private Instant termsAcceptedAt;
+    private List<Long> communityIds;
 }

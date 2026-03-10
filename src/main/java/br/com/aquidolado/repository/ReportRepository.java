@@ -5,7 +5,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+
 public interface ReportRepository extends JpaRepository<Report, Long> {
+
+    List<Report> findByAd_IdOrderByCreatedAtDesc(Long adId);
 
     void deleteByReporterUser_Id(Long userId);
 

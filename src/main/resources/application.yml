@@ -94,6 +94,11 @@ app:
       api-key: ${CLOUDINARY_API_KEY:}
       api-secret: ${CLOUDINARY_API_SECRET:}
       folder: ${CLOUDINARY_FOLDER:aqui}  # Opcional: organizar em pasta
+  # Admin panel: status checks (opcional; VERCEL_TOKEN, VERCEL_PROJECT_ID, RAILWAY_STATUS_URL)
+  admin:
+    vercel-token: ${VERCEL_TOKEN:}
+    vercel-project-id: ${VERCEL_PROJECT_ID:}
+    railway-status-url: ${RAILWAY_STATUS_URL:}
 
 # Logging
 logging:

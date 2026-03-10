@@ -44,6 +44,7 @@ public class UserService {
                 .whatsapp(user.getWhatsapp())
                 .address(user.getAddress())
                 .emailVerified(Boolean.TRUE.equals(user.getEmailVerified()))
+                .systemAdmin(Boolean.TRUE.equals(user.getSystemAdmin()))
                 .build();
     }
 
@@ -67,6 +68,7 @@ public class UserService {
                 .whatsapp(user.getWhatsapp())
                 .address(user.getAddress())
                 .emailVerified(Boolean.TRUE.equals(user.getEmailVerified()))
+                .systemAdmin(Boolean.TRUE.equals(user.getSystemAdmin()))
                 .build();
     }
 

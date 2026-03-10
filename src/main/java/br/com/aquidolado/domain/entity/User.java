@@ -53,6 +53,10 @@ public class User {
     @Column(name = "privacy_accepted_at")
     private Instant privacyAcceptedAt;
 
+    @Column(name = "system_admin", nullable = false)
+    @Builder.Default
+    private Boolean systemAdmin = false;
+
     @ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST})
     @JoinTable(
             name = "user_communities",

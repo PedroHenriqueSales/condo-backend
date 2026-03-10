@@ -9,7 +9,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -26,10 +27,16 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             throw new UsernameNotFoundException("Usuário inativo");
         }
 
+        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+        if (Boolean.TRUE.equals(user.getSystemAdmin())) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        }
+
         return new CurrentUserImpl(
                 user.getId(),
                 user.getEmail(),
                 user.getPasswordHash(),
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
+                authorities);
     }
 }

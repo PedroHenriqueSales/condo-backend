@@ -490,6 +490,38 @@ public class CommunityService {
     }
 
     /**
+     * Apaga a comunidade como administrador do sistema (qualquer comunidade, qualquer tamanho).
+     */
+    @Transactional
+    public void deleteCommunityAsSystemAdmin(Long communityId) {
+        Community community = communityRepository.findByIdWithCreatedByAndMembers(communityId)
+                .orElseThrow(() -> new IllegalArgumentException("Condomínio não encontrado"));
+
+        for (User member : List.copyOf(community.getMembers())) {
+            member.getCommunities().remove(community);
+            userRepository.save(member);
+        }
+        community.getMembers().clear();
+        communityRepository.saveAndFlush(community);
+
+        List<Ad> ads = adRepository.findByCommunity_Id(communityId);
+        for (Ad ad : ads) {
+            reportRepository.deleteByAd_Id(ad.getId());
+            recommendationReactionRepository.deleteByAd_Id(ad.getId());
+            recommendationCommentRepository.findByAd_Id(ad.getId()).forEach(comment ->
+                    commentLikeRepository.deleteByCommentId(comment.getId()));
+            recommendationCommentRepository.deleteByAd_Id(ad.getId());
+            adImageRepository.deleteByAdId(ad.getId());
+            storageService.deleteByPrefix("ads/" + ad.getId());
+            adRepository.delete(ad);
+        }
+
+        communityAdminRepository.deleteByCommunity_Id(communityId);
+        joinRequestRepository.deleteByCommunity_Id(communityId);
+        communityRepository.deleteById(communityId);
+    }
+
+    /**
      * When the only admin leaves (community or role), promote the most active member.
      * Most active = most ads in the community; tie-break by lower user id.
      */
