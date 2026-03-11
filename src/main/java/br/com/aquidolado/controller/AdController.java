@@ -124,6 +124,27 @@ public class AdController {
         return ResponseEntity.ok(adService.closeAd(id, userId));
     }
 
+    @PatchMapping("/{id}/reserve")
+    @Operation(summary = "Reservar anúncio", description = "Marca um anúncio de venda/troca como reservado")
+    public ResponseEntity<AdResponse> reserve(@PathVariable Long id) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        return ResponseEntity.ok(adService.reserveAd(id, userId));
+    }
+
+    @PatchMapping("/{id}/unreserve")
+    @Operation(summary = "Remover reserva", description = "Remove o status de reservado de um anúncio")
+    public ResponseEntity<AdResponse> unreserve(@PathVariable Long id) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        return ResponseEntity.ok(adService.unreserveAd(id, userId));
+    }
+
+    @PatchMapping("/{id}/sold")
+    @Operation(summary = "Marcar como vendido", description = "Marca um anúncio de venda/troca como vendido (permanece no feed por 24h)")
+    public ResponseEntity<AdResponse> markAsSold(@PathVariable Long id) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        return ResponseEntity.ok(adService.markAsSold(id, userId));
+    }
+
     @DeleteMapping("/{id}")
     @Operation(summary = "Remover anúncio", description = "Exclui permanentemente um anúncio encerrado (apenas o criador)")
     public ResponseEntity<Void> delete(@PathVariable Long id) {

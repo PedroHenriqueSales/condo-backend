@@ -38,6 +38,9 @@ public class Ad {
     @Builder.Default
     private AdStatus status = AdStatus.ACTIVE;
 
+    @Column(name = "previous_price")
+    private BigDecimal previousPrice;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -60,4 +63,8 @@ public class Ad {
     /** Preenchido quando o anúncio foi suspenso automaticamente por denúncias (status = PAUSED). */
     @Column(name = "suspended_by_reports_at")
     private Instant suspendedByReportsAt;
+
+    /** Preenchido quando o anúncio for marcado como vendido. */
+    @Column(name = "sold_at")
+    private Instant soldAt;
 }

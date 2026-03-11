@@ -35,15 +35,19 @@ public interface AdRepository extends JpaRepository<Ad, Long> {
 
     @Query("SELECT a FROM Ad a " +
            "JOIN FETCH a.user JOIN FETCH a.community " +
-           "WHERE a.community.id = :communityId AND a.status = :status " +
+           "WHERE a.community.id = :communityId " +
+           "AND (a.status IN :baseStatuses " +
+           "     OR (a.status = :soldStatus AND a.soldAt IS NOT NULL AND a.soldAt >= :visibleAfter)) " +
            "AND (:types IS NULL OR a.type IN :types) " +
            "AND (:searchPattern IS NULL OR LOWER(a.title) LIKE :searchPattern " +
            "OR LOWER(COALESCE(a.description, '')) LIKE :searchPattern " +
            "OR LOWER(a.user.name) LIKE :searchPattern " +
            "OR LOWER(COALESCE(a.serviceType, '')) LIKE :searchPattern)")
-    Page<Ad> findByCommunityWithFilters(
+    Page<Ad> findVisibleForFeed(
             @Param("communityId") Long communityId,
-            @Param("status") AdStatus status,
+            @Param("baseStatuses") List<AdStatus> baseStatuses,
+            @Param("soldStatus") AdStatus soldStatus,
+            @Param("visibleAfter") Instant visibleAfter,
             @Param("types") List<AdType> types,
             @Param("searchPattern") String searchPattern,
             Pageable pageable);

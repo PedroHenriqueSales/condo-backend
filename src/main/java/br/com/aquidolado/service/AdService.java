@@ -27,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 
@@ -106,8 +107,12 @@ public class AdService {
         // Se a lista estiver vazia, passa null para retornar todos os tipos
         List<AdType> typesToUse = (types != null && !types.isEmpty()) ? types : null;
 
-        Page<Ad> ads = adRepository.findByCommunityWithFilters(
-                communityId, AdStatus.ACTIVE, typesToUse, searchPattern, pageable);
+        // Feed: mostra anúncios ATIVOS, RESERVADOS e VENDIDOS nas últimas 24h
+        Instant visibleAfter = Instant.now().minus(24, ChronoUnit.HOURS);
+        List<AdStatus> baseStatuses = List.of(AdStatus.ACTIVE, AdStatus.RESERVED);
+
+        Page<Ad> ads = adRepository.findVisibleForFeed(
+                communityId, baseStatuses, AdStatus.SOLD, visibleAfter, typesToUse, searchPattern, pageable);
 
         return ads.map(ad -> toResponse(ad, userId));
     }
@@ -152,7 +157,15 @@ public class AdService {
         ad.setTitle(request.getTitle());
         ad.setDescription(request.getDescription());
         ad.setType(request.getType());
-        ad.setPrice((request.getType() == AdType.DONATION || request.getType() == AdType.RECOMMENDATION) ? null : request.getPrice());
+
+        BigDecimal oldPrice = ad.getPrice();
+        BigDecimal newPrice = (request.getType() == AdType.DONATION || request.getType() == AdType.RECOMMENDATION)
+                ? null : request.getPrice();
+        // Quando baixar o valor (apenas Venda/Troca), guarda o preço anterior para exibir riscado
+        if (ad.getType() == AdType.SALE_TRADE && oldPrice != null && newPrice != null && newPrice.compareTo(oldPrice) < 0) {
+            ad.setPreviousPrice(oldPrice);
+        }
+        ad.setPrice(newPrice);
         ad.setRecommendedContact(request.getType() == AdType.RECOMMENDATION ? request.getRecommendedContact().trim() : null);
         ad.setServiceType(request.getType() == AdType.RECOMMENDATION ? request.getServiceType().trim() : null);
         ad = adRepository.save(ad);
@@ -222,8 +235,72 @@ public class AdService {
         if (ad.getStatus() == AdStatus.REMOVED) {
             throw new IllegalArgumentException("Anúncio removido por denúncias");
         }
+        if (ad.getStatus() == AdStatus.SOLD) {
+            throw new IllegalArgumentException("Anúncio já marcado como vendido");
+        }
 
         ad.setStatus(AdStatus.CLOSED);
+        ad = adRepository.save(ad);
+
+        return toResponse(ad, userId);
+    }
+
+    @Transactional
+    public AdResponse reserveAd(Long adId, Long userId) {
+        Ad ad = adRepository.findById(adId)
+                .orElseThrow(() -> new IllegalArgumentException("Anúncio não encontrado"));
+
+        if (!ad.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("Você não pode reservar este anúncio");
+        }
+        if (ad.getType() != AdType.SALE_TRADE) {
+            throw new IllegalArgumentException("Reservar é permitido apenas para anúncios de venda/troca");
+        }
+        if (ad.getStatus() != AdStatus.ACTIVE) {
+            throw new IllegalArgumentException("Só é possível reservar anúncios ativos");
+        }
+
+        ad.setStatus(AdStatus.RESERVED);
+        ad = adRepository.save(ad);
+
+        return toResponse(ad, userId);
+    }
+
+    @Transactional
+    public AdResponse unreserveAd(Long adId, Long userId) {
+        Ad ad = adRepository.findById(adId)
+                .orElseThrow(() -> new IllegalArgumentException("Anúncio não encontrado"));
+
+        if (!ad.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("Você não pode alterar este anúncio");
+        }
+        if (ad.getStatus() != AdStatus.RESERVED) {
+            throw new IllegalArgumentException("Só é possível reabrir anúncios reservados");
+        }
+
+        ad.setStatus(AdStatus.ACTIVE);
+        ad = adRepository.save(ad);
+
+        return toResponse(ad, userId);
+    }
+
+    @Transactional
+    public AdResponse markAsSold(Long adId, Long userId) {
+        Ad ad = adRepository.findById(adId)
+                .orElseThrow(() -> new IllegalArgumentException("Anúncio não encontrado"));
+
+        if (!ad.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("Você não pode alterar este anúncio");
+        }
+        if (ad.getType() != AdType.SALE_TRADE) {
+            throw new IllegalArgumentException("Marcar como vendido é permitido apenas para anúncios de venda/troca");
+        }
+        if (ad.getStatus() == AdStatus.REMOVED) {
+            throw new IllegalArgumentException("Anúncio removido por denúncias");
+        }
+
+        ad.setStatus(AdStatus.SOLD);
+        ad.setSoldAt(Instant.now());
         ad = adRepository.save(ad);
 
         return toResponse(ad, userId);
@@ -335,6 +412,7 @@ public class AdService {
                 .description(ad.getDescription())
                 .type(ad.getType())
                 .price(ad.getPrice())
+                .previousPrice(ad.getPreviousPrice())
                 .status(ad.getStatus())
                 .userId(ad.getUser().getId())
                 .userName(ad.getUser().getName())
@@ -344,7 +422,8 @@ public class AdService {
                 .imageUrls(urls)
                 .recommendedContact(ad.getRecommendedContact())
                 .serviceType(ad.getServiceType())
-                .suspendedByReportsAt(ad.getSuspendedByReportsAt());
+                .suspendedByReportsAt(ad.getSuspendedByReportsAt())
+                .soldAt(ad.getSoldAt());
         if (ad.getType() == AdType.RECOMMENDATION) {
             long ratingCount = recommendationReactionRepository.countByAdId(ad.getId());
             builder.ratingCount(ratingCount);

@@ -22,6 +22,7 @@ public class AdResponse {
     private String description;
     private AdType type;
     private BigDecimal price;
+    private BigDecimal previousPrice;
     private AdStatus status;
     private Long userId;
     private String userName;
@@ -39,4 +40,7 @@ public class AdResponse {
 
     /** Preenchido quando o anúncio foi suspenso automaticamente por denúncias (status = PAUSED). */
     private Instant suspendedByReportsAt;
+
+    /** Preenchido quando o anúncio for marcado como vendido. */
+    private Instant soldAt;
 }
